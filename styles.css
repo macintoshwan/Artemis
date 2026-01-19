@@ -1,0 +1,479 @@
+/* ============================================================
+   极简项目管理系统 - 样式表
+   ============================================================ */
+
+/* ============================================================
+   全局CSS变量 - 在此处统一修改全局样式
+   ============================================================ */
+:root {
+    /* ========== 全局文字颜色（统一） ========== */
+    --text-color: #fea500;           /* 所有文字统一使用此颜色 */
+
+    /* ========== 字体设置（默认系统字体） ========== */
+    --font-family:'方正粗宋简体', 'Fangzheng Cusong Jianti', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-size-base: 16px;
+    --font-size-small: 14px;
+    --font-size-medium: 17px;
+    --font-size-large: 20px;
+    --font-size-xl: 28px;
+    --font-size-xxl: 36px;
+
+    /* ========== 圆角值（直角机械感） ========== */
+    --radius-small: 0px;
+    --radius-base: 0px;
+    --radius-large: 0px;
+    --radius-xl: 0px;
+
+    /* ========== 主色调 ========== */
+    --color-primary: #ffcc00;        /* 主色调 - 黄色 */
+    --color-cyan: #66ffcc;           /* 浅青绿色 - 模块底色 */
+    --color-red: #ff4444;            /* 红色 - 模块底色 */
+    --color-success: #66ffcc;        /* 成功/添加按钮 - 青绿色 */
+    --color-warning: #ffcc00;        /* 警示/编辑 - 黄色 */
+    --color-danger: #ff4444;         /* 删除按钮 - 红色 */
+    --color-secondary: #444444;      /* 次要按钮 - 深灰 */
+
+    /* ========== 背景色 ========== */
+    --bg-page: #000000;              /* 页面背景 */
+    --bg-card: #000000;              /* 卡片背景 */
+    --bg-card-alt: #ff4444;          /* 卡片备用背景 */
+    --bg-task: #000000;              /* 任务项背景 */
+    --bg-overlay: rgba(0, 0, 0, 0.85); /* 遮罩层背景 */
+
+    /* ========== 文字颜色（全部统一为 #fea500） ========== */
+    --text-primary: var(--text-color);
+    --text-secondary: var(--text-color);
+    --text-on-module: var(--text-color);
+    --text-muted: var(--text-color);
+    --text-disabled: var(--text-color);
+    --text-white: var(--text-color);
+
+    /* ========== 边框颜色 ========== */
+    --border-color: #fea500;
+    --border-outer: #fea500;
+    --border-module: #fea500;
+    --border-light: #66ffcc;
+
+    /* ========== 边框宽度 ========== */
+    --border-width-outer: 3px;
+    --border-width-module: 3px;
+    --border-width-task: 3px;
+
+    /* ========== 阴影 ========== */
+    --shadow-card: none;
+    --shadow-modal: 0 0 20px rgba(255, 204, 0, 0.3);
+
+    /* ========== 间距 ========== */
+    --spacing-xs: 6px;
+    --spacing-sm: 8px;
+    --spacing-md: 12px;
+    --spacing-lg: 16px;
+    --spacing-xl: 24px;
+
+    /* ========== 过渡动画 ========== */
+    --transition-fast: 0.15s;
+    --transition-base: 0.2s;
+}
+/* ========== 基础重置 ========== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-family);
+    background: var(--bg-page);
+    padding: var(--spacing-lg);
+    max-width: 800px;
+    margin: 0 auto;
+    /* 外层黄色粗边框 */
+    border: var(--border-width-outer) solid var(--border-outer);
+    min-height: 100vh;
+}
+
+h1 {
+    text-align: center;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xl);
+    display: inline-block;
+    width: 100%;
+}
+
+/* ========== 通用输入框样式 ========== */
+input[type="text"] {
+    flex: 1;
+    padding: 12px var(--spacing-md);
+    border: var(--border-width-module) solid var(--border-module);
+    border-radius: var(--radius-base);
+    font-size: var(--font-size-base);
+    outline: none;
+    transition: border-color var(--transition-fast);
+    background: var(--bg-page);
+    color: var(--text-primary);
+}
+
+input[type="text"]:focus {
+    border-color: var(--color-cyan);
+}
+
+input[type="text"]::placeholder {
+    color: var(--text-muted);
+}
+
+/* ========== 通用按钮样式 ========== */
+button {
+    padding: 12px var(--spacing-lg);
+    border: var(--border-width-module) solid var(--border-module);
+    border-radius: var(--radius-base);
+    cursor: pointer;
+    font-size: var(--font-size-base);
+    font-family: var(--font-family);
+    color: var(--text-color);
+    transition: opacity var(--transition-fast);
+    font-weight: 600;
+}
+
+button:hover {
+    opacity: 0.85;
+}
+
+/* 主要按钮 - 青绿色底+黄色描边+黑字 */
+.btn-primary {
+    background: var(--color-cyan);
+    color: var(--text-on-module);
+    border-color: var(--border-module);
+}
+
+/* 危险按钮 - 透明底+黄色描边 */
+.btn-danger {
+    background: transparent;
+    color: var(--text-color);
+    border-color: var(--border-module);
+    padding: 6px 12px;
+    font-size: var(--font-size-small);
+}
+
+/* 成功按钮 - 透明底+黄色描边 */
+.btn-success {
+    background: transparent;
+    color: var(--text-color);
+    border-color: var(--border-module);
+    padding: var(--spacing-xs) var(--spacing-md);
+}
+
+/* 编辑按钮 - 透明底+黄色描边 */
+.btn-edit {
+    background: transparent;
+    color: var(--text-color);
+    border-color: var(--border-module);
+    padding: 6px 12px;
+    font-size: var(--font-size-small);
+}
+
+/* ========== 新建项目输入区 ========== */
+.input-section {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-xl);
+}
+
+/* ========== 项目列表容器 ========== */
+.project-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+/* ========== 项目卡片 - 浅青绿色底+黄色细描边 ========== */
+.project-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-large);
+    padding: var(--spacing-lg);
+    border: var(--border-width-module) solid var(--border-module);
+}
+
+/* 项目头部 */
+.project-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+}
+
+/* 项目标题 - 黑色文字（在青绿色模块上） */
+.project-title {
+    font-size: var(--font-size-xl);
+    font-weight: 600;
+    color: var(--text-on-module);
+}
+
+/* 项目标题编辑输入框 */
+.project-title-input {
+    font-size: var(--font-size-xl);
+    font-weight: 600;
+    border: var(--border-width-module) solid var(--border-module);
+    padding: 5px var(--spacing-sm);
+    border-radius: var(--radius-small);
+    background: var(--bg-page);
+    color: var(--text-primary);
+}
+
+/* 项目操作按钮组 */
+.project-actions {
+    display: flex;
+    gap: var(--spacing-xs);
+}
+
+/* ========== 任务列表 ========== */
+.task-list {
+    margin-bottom: var(--spacing-md);
+}
+
+/* 单个任务项 - 浅青绿底+黄色描边 */
+.task-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    background: var(--bg-task);
+    border-radius: var(--radius-base);
+    margin-bottom: var(--spacing-xs);
+    border: var(--border-width-task) solid var(--border-module);
+}
+
+/* 任务复选框 */
+.task-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--color-warning);
+}
+
+/* 任务名称 - 黑色文字 */
+.task-name {
+    flex: 1;
+    color: var(--text-on-module);
+}
+
+/* 已完成任务名称 - 划线效果 */
+.task-name.completed {
+    text-decoration: line-through;
+    color: var(--text-disabled);
+}
+
+/* 任务名称编辑输入框 */
+.task-name-input {
+    flex: 1;
+    padding: 5px var(--spacing-sm);
+    border: var(--border-width-module) solid var(--border-module);
+    border-radius: var(--radius-small);
+    background: var(--bg-page);
+    color: var(--text-primary);
+}
+
+/* ========== 添加任务输入区 ========== */
+.add-task-section {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.add-task-section input {
+    flex: 1;
+}
+
+/* ========== 空状态提示 ========== */
+.empty-message {
+    text-align: center;
+    color: var(--text-primary);
+    padding: 40px;
+    background: var(--bg-page);
+    border-radius: var(--radius-large);
+    border: var(--border-width-module) solid var(--border-module);
+}
+
+/* 任务列表空状态 */
+.task-empty {
+    color: var(--text-on-module);
+    font-size: var(--font-size-base);
+    padding: var(--spacing-sm);
+    opacity: 0.7;
+}
+
+/* ========== 下方新建项目按钮区域 ========== */
+.create-project-section {
+    display: flex;
+    justify-content: center;
+    margin-top: var(--spacing-xl);
+    padding: var(--spacing-lg) 0;
+}
+
+.btn-create-project {
+    padding: var(--spacing-md) 40px;
+    font-size: var(--font-size-large);
+    font-weight: 600;
+    background: transparent;
+    color: var(--text-color);
+}
+
+/* ========== 次要按钮 - 透明底+黄色描边 ========== */
+.btn-secondary {
+    background: transparent;
+    color: var(--text-primary);
+    border: var(--border-width-module) solid var(--border-module);
+    padding: var(--spacing-sm) var(--spacing-lg);
+}
+
+/* ============================================================
+   新建项目浮层样式
+   ============================================================ */
+
+/* 浮层遮罩层 - 半透明黑色背景 */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-overlay);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* 浮层容器 - 黑色背景+黄色粗边框 */
+.modal-container {
+    background: var(--bg-page);
+    width: 90%;
+    max-width: 700px;
+    max-height: 90vh;
+    border-radius: var(--radius-xl);
+    border: var(--border-width-outer) solid var(--border-outer);
+    box-shadow: var(--shadow-modal);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* 浮层头部 - 返回按钮区域 */
+.modal-header {
+    padding: var(--spacing-lg);
+}
+
+/* 浮层主体 - 表单区域 */
+.modal-body {
+    padding: var(--spacing-lg) var(--spacing-xl);
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* 浮层标题 - 黄色+青绿色下划线 */
+.modal-title {
+    text-align: center;
+    color: var(--text-primary);
+    margin-bottom: 25px;
+    font-size: var(--font-size-xxl);
+    display: inline-block;
+    width: 100%;
+}
+
+/* 表单网格布局 - 两列 */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-lg);
+}
+
+/* 单个表单项 */
+.form-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+/* 表单标签 - 黄色文字 */
+.form-item label {
+    font-size: var(--font-size-base);
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+/* 必填标记 - 红色 */
+.required {
+    color: var(--color-danger);
+}
+
+/* 表单输入框通用样式 - 黑底+黄色描边 */
+.form-item input[type="text"],
+.form-item input[type="date"],
+.form-item input[type="number"],
+.form-item select {
+    padding: 12px var(--spacing-md);
+    border: var(--border-width-module) solid var(--border-module);
+    border-radius: var(--radius-base);
+    font-size: var(--font-size-base);
+    outline: none;
+    transition: border-color var(--transition-fast);
+    width: 100%;
+    background: var(--bg-page);
+    color: var(--text-primary);
+}
+
+.form-item input:focus,
+.form-item select:focus {
+    border-color: var(--color-cyan);
+}
+
+/* 下拉选择框样式 */
+.form-item select {
+    background: var(--bg-page);
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.form-item select option {
+    background: var(--bg-page);
+    color: var(--text-primary);
+}
+
+/* 浮层底部 - 确认按钮区域 */
+.modal-footer {
+    padding: var(--spacing-lg);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.modal-footer .btn-primary {
+    padding: 12px var(--spacing-xl);
+    font-size: var(--font-size-medium);
+    font-weight: 600;
+    background: transparent;
+    color: var(--text-color);
+    border-color: var(--border-module);
+}
+
+.modal-footer .btn-primary {
+    padding: 12px var(--spacing-xl);
+    font-size: var(--font-size-medium);
+    font-weight: 600;
+    background: transparent;
+    color: var(--text-color);
+}
+
+/* ========== 响应式布局 - 小屏幕单列显示 ========== */
+@media (max-width: 600px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .modal-container {
+        width: 95%;
+        max-height: 95vh;
+    }
+    
+    .modal-body {
+        padding: var(--spacing-md) var(--spacing-lg);
+    }
+}
+

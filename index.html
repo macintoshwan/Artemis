@@ -4,603 +4,211 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>极简项目管理系统</title>
-    <style>
-        /* ========== 基础样式 ========== */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: #f5f5f5;
-            padding: 20px;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 30px;
-        }
-
-        /* ========== 输入区域样式 ========== */
-        .input-section {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 30px;
-        }
-
-        input[type="text"] {
-            flex: 1;
-            padding: 12px 15px;
-            border: 2px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-
-        input[type="text"]:focus {
-            border-color: #4a90d9;
-        }
-
-        button {
-            padding: 12px 20px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: opacity 0.2s;
-        }
-
-        button:hover {
-            opacity: 0.85;
-        }
-
-        .btn-primary {
-            background: #4a90d9;
-            color: white;
-        }
-
-        .btn-danger {
-            background: #e74c3c;
-            color: white;
-            padding: 6px 12px;
-            font-size: 12px;
-        }
-
-        .btn-success {
-            background: #27ae60;
-            color: white;
-            padding: 8px 15px;
-        }
-
-        /* ========== 项目卡片样式 ========== */
-        .project-list {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .project-card {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-
-        .project-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .project-title {
-            font-size: 18px;
-            font-weight: 600;
-            color: #333;
-        }
-
-        .project-title-input {
-            font-size: 18px;
-            font-weight: 600;
-            border: 1px solid #4a90d9;
-            padding: 5px 10px;
-            border-radius: 4px;
-        }
-
-        .project-actions {
-            display: flex;
-            gap: 8px;
-        }
-
-        .btn-edit {
-            background: #f39c12;
-            color: white;
-            padding: 6px 12px;
-            font-size: 12px;
-        }
-
-        /* ========== 任务列表样式 ========== */
-        .task-list {
-            margin-bottom: 15px;
-        }
-
-        .task-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px;
-            background: #f9f9f9;
-            border-radius: 6px;
-            margin-bottom: 8px;
-        }
-
-        .task-item input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-        }
-
-        .task-name {
-            flex: 1;
-            color: #555;
-        }
-
-        .task-name.completed {
-            text-decoration: line-through;
-            color: #aaa;
-        }
-
-        .task-name-input {
-            flex: 1;
-            padding: 5px 10px;
-            border: 1px solid #4a90d9;
-            border-radius: 4px;
-        }
-
-        /* ========== 添加任务输入框 ========== */
-        .add-task-section {
-            display: flex;
-            gap: 10px;
-        }
-
-        .add-task-section input {
-            flex: 1;
-        }
-
-        /* ========== 空状态提示 ========== */
-        .empty-message {
-            text-align: center;
-            color: #999;
-            padding: 40px;
-            background: white;
-            border-radius: 10px;
-        }
-    </style>
+    <!-- 引入外部样式表 -->
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>📋 极简项目管理</h1>
+    <h1>Artemis</h1>
 
-    <!-- 新建项目输入区 -->
-    <div class="input-section">
-        <input type="text" id="projectInput" placeholder="输入项目名称..." onkeypress="handleProjectInputKeypress(event)">
-        <button class="btn-primary" onclick="addProject()">➕ 新建项目</button>
-    </div>
-
-    <!-- 项目列表容器 -->
+    <!-- 上方区域：项目列表容器 -->
     <div id="projectList" class="project-list"></div>
 
-    <script>
-        // ============================================================
-        // 数据结构说明：
-        // 存储在 localStorage 中的数据格式为 JSON 数组：
-        // [
-        //   {
-        //     id: 1234567890,           // 项目唯一ID（时间戳）
-        //     name: "项目名称",          // 项目名称
-        //     tasks: [                   // 任务数组
-        //       {
-        //         id: 1234567891,        // 任务唯一ID
-        //         name: "任务名称",       // 任务名称
-        //         completed: false       // 是否完成
-        //       }
-        //     ]
-        //   }
-        // ]
-        // ============================================================
+    <!-- 下方区域：新建项目按钮 -->
+    <div class="create-project-section">
+        <button class="btn-primary btn-create-project" onclick="openCreateProjectModal()">新建项目</button>
+    </div>
 
-        // localStorage 存储的键名
-        const STORAGE_KEY = 'projectManagerData';
+    <!-- ========== 新建项目浮层 ========== -->
+    <div id="createProjectModal" class="modal-overlay" style="display: none;">
+        <div class="modal-container">
+            <!-- 左上角：返回按钮 -->
+            <div class="modal-header">
+                <button class="btn-secondary" onclick="closeCreateProjectModal()">返回</button>
+            </div>
 
-        // ============================================================
-        // 数据操作函数 - 读取和保存
-        // ============================================================
-
-        /**
-         * 从 localStorage 读取所有项目数据
-         * @returns {Array} 项目数组，如果没有数据则返回空数组
-         */
-        function getProjects() {
-            // 从 localStorage 获取 JSON 字符串
-            const data = localStorage.getItem(STORAGE_KEY);
-            // 如果有数据，解析为对象；否则返回空数组
-            return data ? JSON.parse(data) : [];
-        }
-
-        /**
-         * 将项目数据保存到 localStorage
-         * @param {Array} projects - 要保存的项目数组
-         */
-        function saveProjects(projects) {
-            // 将对象转换为 JSON 字符串存储
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
-        }
-
-        // ============================================================
-        // 项目操作函数 - 增删改查
-        // ============================================================
-
-        /**
-         * 添加新项目
-         */
-        function addProject() {
-            const input = document.getElementById('projectInput');
-            const name = input.value.trim();
-            
-            // 验证输入不为空
-            if (!name) {
-                alert('请输入项目名称！');
-                return;
-            }
-
-            // 读取现有项目
-            const projects = getProjects();
-            
-            // 创建新项目对象
-            const newProject = {
-                id: Date.now(),        // 使用时间戳作为唯一ID
-                name: name,            // 项目名称
-                tasks: []              // 初始化空任务数组
-            };
-            
-            // 将新项目添加到数组
-            projects.push(newProject);
-            
-            // 保存到 localStorage
-            saveProjects(projects);
-            
-            // 清空输入框并重新渲染
-            input.value = '';
-            renderProjects();
-        }
-
-        /**
-         * 删除项目
-         * @param {number} projectId - 要删除的项目ID
-         */
-        function deleteProject(projectId) {
-            if (!confirm('确定要删除这个项目吗？所有任务也会被删除！')) {
-                return;
-            }
-
-            // 读取项目数据
-            const projects = getProjects();
-            
-            // 过滤掉要删除的项目（保留ID不匹配的项目）
-            const updatedProjects = projects.filter(p => p.id !== projectId);
-            
-            // 保存并重新渲染
-            saveProjects(updatedProjects);
-            renderProjects();
-        }
-
-        /**
-         * 开始编辑项目名称（显示输入框）
-         * @param {number} projectId - 项目ID
-         */
-        function startEditProject(projectId) {
-            const projects = getProjects();
-            const project = projects.find(p => p.id === projectId);
-            
-            // 获取标题元素并替换为输入框
-            const titleEl = document.getElementById(`project-title-${projectId}`);
-            titleEl.innerHTML = `
-                <input type="text" class="project-title-input" 
-                       id="edit-project-${projectId}" 
-                       value="${escapeHtml(project.name)}"
-                       onkeypress="handleEditProjectKeypress(event, ${projectId})"
-                       onblur="saveProjectName(${projectId})">
-            `;
-            
-            // 自动聚焦输入框
-            document.getElementById(`edit-project-${projectId}`).focus();
-        }
-
-        /**
-         * 保存编辑后的项目名称
-         * @param {number} projectId - 项目ID
-         */
-        function saveProjectName(projectId) {
-            const input = document.getElementById(`edit-project-${projectId}`);
-            if (!input) return;
-            
-            const newName = input.value.trim();
-            if (!newName) {
-                renderProjects(); // 如果为空，恢复原来的显示
-                return;
-            }
-
-            // 读取、修改、保存
-            const projects = getProjects();
-            const project = projects.find(p => p.id === projectId);
-            if (project) {
-                project.name = newName;
-                saveProjects(projects);
-            }
-            
-            renderProjects();
-        }
-
-        // ============================================================
-        // 任务操作函数 - 增删改查
-        // ============================================================
-
-        /**
-         * 添加新任务到指定项目
-         * @param {number} projectId - 项目ID
-         */
-        function addTask(projectId) {
-            const input = document.getElementById(`task-input-${projectId}`);
-            const name = input.value.trim();
-            
-            if (!name) {
-                alert('请输入任务名称！');
-                return;
-            }
-
-            // 读取项目数据
-            const projects = getProjects();
-            
-            // 找到对应的项目
-            const project = projects.find(p => p.id === projectId);
-            
-            if (project) {
-                // 创建新任务并添加到项目的任务数组
-                project.tasks.push({
-                    id: Date.now(),        // 任务唯一ID
-                    name: name,            // 任务名称
-                    completed: false       // 初始状态：未完成
-                });
-                
-                // 保存到 localStorage
-                saveProjects(projects);
-            }
-            
-            // 清空输入框并重新渲染
-            input.value = '';
-            renderProjects();
-        }
-
-        /**
-         * 删除任务
-         * @param {number} projectId - 项目ID
-         * @param {number} taskId - 任务ID
-         */
-        function deleteTask(projectId, taskId) {
-            const projects = getProjects();
-            const project = projects.find(p => p.id === projectId);
-            
-            if (project) {
-                // 过滤掉要删除的任务
-                project.tasks = project.tasks.filter(t => t.id !== taskId);
-                saveProjects(projects);
-            }
-            
-            renderProjects();
-        }
-
-        /**
-         * 切换任务完成状态
-         * @param {number} projectId - 项目ID
-         * @param {number} taskId - 任务ID
-         */
-        function toggleTask(projectId, taskId) {
-            const projects = getProjects();
-            const project = projects.find(p => p.id === projectId);
-            
-            if (project) {
-                const task = project.tasks.find(t => t.id === taskId);
-                if (task) {
-                    // 切换完成状态
-                    task.completed = !task.completed;
-                    saveProjects(projects);
-                }
-            }
-            
-            renderProjects();
-        }
-
-        /**
-         * 开始编辑任务名称
-         * @param {number} projectId - 项目ID
-         * @param {number} taskId - 任务ID
-         */
-        function startEditTask(projectId, taskId) {
-            const projects = getProjects();
-            const project = projects.find(p => p.id === projectId);
-            const task = project?.tasks.find(t => t.id === taskId);
-            
-            if (!task) return;
-            
-            const taskNameEl = document.getElementById(`task-name-${taskId}`);
-            taskNameEl.innerHTML = `
-                <input type="text" class="task-name-input" 
-                       id="edit-task-${taskId}" 
-                       value="${escapeHtml(task.name)}"
-                       onkeypress="handleEditTaskKeypress(event, ${projectId}, ${taskId})"
-                       onblur="saveTaskName(${projectId}, ${taskId})">
-            `;
-            
-            document.getElementById(`edit-task-${taskId}`).focus();
-        }
-
-        /**
-         * 保存编辑后的任务名称
-         * @param {number} projectId - 项目ID
-         * @param {number} taskId - 任务ID
-         */
-        function saveTaskName(projectId, taskId) {
-            const input = document.getElementById(`edit-task-${taskId}`);
-            if (!input) return;
-            
-            const newName = input.value.trim();
-            if (!newName) {
-                renderProjects();
-                return;
-            }
-
-            const projects = getProjects();
-            const project = projects.find(p => p.id === projectId);
-            const task = project?.tasks.find(t => t.id === taskId);
-            
-            if (task) {
-                task.name = newName;
-                saveProjects(projects);
-            }
-            
-            renderProjects();
-        }
-
-        // ============================================================
-        // 界面渲染函数
-        // ============================================================
-
-        /**
-         * 渲染所有项目到页面
-         */
-        function renderProjects() {
-            const container = document.getElementById('projectList');
-            const projects = getProjects();
-
-            // 如果没有项目，显示空状态提示
-            if (projects.length === 0) {
-                container.innerHTML = '<div class="empty-message">暂无项目，请创建第一个项目 ✨</div>';
-                return;
-            }
-
-            // 生成项目列表 HTML
-            container.innerHTML = projects.map(project => `
-                <div class="project-card">
-                    <!-- 项目头部：标题和操作按钮 -->
-                    <div class="project-header">
-                        <span class="project-title" id="project-title-${project.id}" ondblclick="startEditProject(${project.id})">
-                            📁 ${escapeHtml(project.name)}
-                        </span>
-                        <div class="project-actions">
-                            <button class="btn-edit" onclick="startEditProject(${project.id})">✏️ 编辑</button>
-                            <button class="btn-danger" onclick="deleteProject(${project.id})">🗑️ 删除</button>
-                        </div>
+            <!-- 中间区域：表单输入项 -->
+            <div class="modal-body">
+                <h2 class="modal-title">新建项目</h2>
+                <div class="form-grid">
+                    <!-- 名称 -->
+                    <div class="form-item">
+                        <label for="modalProjectName">名称 <span class="required">*</span></label>
+                        <input type="text" id="modalProjectName" placeholder="请输入项目名称">
                     </div>
-                    
-                    <!-- 任务列表 -->
-                    <div class="task-list">
-                        ${project.tasks.length === 0 
-                            ? '<div style="color: #999; font-size: 14px; padding: 10px;">暂无任务</div>'
-                            : project.tasks.map(task => `
-                                <div class="task-item">
-                                    <input type="checkbox" 
-                                           ${task.completed ? 'checked' : ''} 
-                                           onchange="toggleTask(${project.id}, ${task.id})">
-                                    <span class="task-name ${task.completed ? 'completed' : ''}" 
-                                          id="task-name-${task.id}"
-                                          ondblclick="startEditTask(${project.id}, ${task.id})">
-                                        ${escapeHtml(task.name)}
-                                    </span>
-                                    <button class="btn-edit" onclick="startEditTask(${project.id}, ${task.id})">✏️</button>
-                                    <button class="btn-danger" onclick="deleteTask(${project.id}, ${task.id})">✕</button>
-                                </div>
-                            `).join('')
-                        }
+
+                    <!-- 预计开始时间 -->
+                    <div class="form-item">
+                        <label for="modalPlanStartDate">预计开始时间</label>
+                        <input type="date" id="modalPlanStartDate">
                     </div>
-                    
-                    <!-- 添加任务输入框 -->
-                    <div class="add-task-section">
-                        <input type="text" 
-                               id="task-input-${project.id}" 
-                               placeholder="添加新任务..."
-                               onkeypress="handleTaskInputKeypress(event, ${project.id})">
-                        <button class="btn-success" onclick="addTask(${project.id})">➕ 添加</button>
+
+                    <!-- 预计结束时间 -->
+                    <div class="form-item">
+                        <label for="modalPlanEndDate">预计结束时间</label>
+                        <input type="date" id="modalPlanEndDate">
+                    </div>
+
+                    <!-- 实际开始时间 -->
+                    <div class="form-item">
+                        <label for="modalActualStartDate">实际开始时间</label>
+                        <input type="date" id="modalActualStartDate">
+                    </div>
+
+                    <!-- 实际结束时间 -->
+                    <div class="form-item">
+                        <label for="modalActualEndDate">实际结束时间</label>
+                        <input type="date" id="modalActualEndDate">
+                    </div>
+
+                    <!-- 重要度 -->
+                    <div class="form-item">
+                        <label for="modalPriority">重要度</label>
+                        <select id="modalPriority">
+                            <option value="低">低</option>
+                            <option value="中" selected>中</option>
+                            <option value="高">高</option>
+                        </select>
+                    </div>
+
+                    <!-- 类别 -->
+                    <div class="form-item">
+                        <label for="modalCategory">类别</label>
+                        <select id="modalCategory">
+                            <option value="工作" selected>工作</option>
+                            <option value="学习">学习</option>
+                            <option value="生活">生活</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+
+                    <!-- 赏金 -->
+                    <div class="form-item">
+                        <label for="modalBounty">赏金</label>
+                        <input type="number" id="modalBounty" step="0.01" min="0" placeholder="请输入项目赏金金额">
                     </div>
                 </div>
-            `).join('');
-        }
+            </div>
 
-        // ============================================================
-        // 辅助函数
-        // ============================================================
+            <!-- 右下角：确认按钮 -->
+            <div class="modal-footer">
+                    <button class="btn-primary" onclick="confirmCreateProject()">确认创建</button>
+            </div>
+        </div>
+    </div>
 
-        /**
-         * HTML 转义，防止 XSS 攻击
-         * @param {string} text - 要转义的文本
-         * @returns {string} 转义后的文本
-         */
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
+    <!-- ========== 编辑任务浮层 ========== -->
+    <div id="editTaskModal" class="modal-overlay" style="display: none;">
+        <div class="modal-container">
+            <!-- 左上角：返回按钮 -->
+            <div class="modal-header">
+                <button class="btn-secondary" onclick="closeEditTaskModal()">返回</button>
+            </div>
 
-        /**
-         * 处理项目输入框的回车键
-         */
-        function handleProjectInputKeypress(event) {
-            if (event.key === 'Enter') {
-                addProject();
-            }
-        }
+            <!-- 中间区域：表单输入项 -->
+            <div class="modal-body">
+                <h2 class="modal-title">编辑任务</h2>
+                <div class="form-grid">
+                    <!-- 名称 -->
+                    <div class="form-item">
+                        <label for="modalTaskName">名称 <span class="required">*</span></label>
+                        <input type="text" id="modalTaskName" placeholder="请输入任务名称">
+                    </div>
 
-        /**
-         * 处理任务输入框的回车键
-         */
-        function handleTaskInputKeypress(event, projectId) {
-            if (event.key === 'Enter') {
-                addTask(projectId);
-            }
-        }
+                    <!-- 预计开始时间 -->
+                    <div class="form-item">
+                        <label for="modalTaskPlanStartDate">预计开始时间</label>
+                        <input type="date" id="modalTaskPlanStartDate">
+                    </div>
 
-        /**
-         * 处理编辑项目名称时的回车键
-         */
-        function handleEditProjectKeypress(event, projectId) {
-            if (event.key === 'Enter') {
-                saveProjectName(projectId);
-            }
-        }
+                    <!-- 预计结束时间 -->
+                    <div class="form-item">
+                        <label for="modalTaskPlanEndDate">预计结束时间</label>
+                        <input type="date" id="modalTaskPlanEndDate">
+                    </div>
 
-        /**
-         * 处理编辑任务名称时的回车键
-         */
-        function handleEditTaskKeypress(event, projectId, taskId) {
-            if (event.key === 'Enter') {
-                saveTaskName(projectId, taskId);
-            }
-        }
+                    <!-- 实际开始时间 -->
+                    <div class="form-item">
+                        <label for="modalTaskActualStartDate">实际开始时间</label>
+                        <input type="date" id="modalTaskActualStartDate">
+                    </div>
 
-        // ============================================================
-        // 页面初始化
-        // ============================================================
+                    <!-- 实际结束时间 -->
+                    <div class="form-item">
+                        <label for="modalTaskActualEndDate">实际结束时间</label>
+                        <input type="date" id="modalTaskActualEndDate">
+                    </div>
 
-        // 页面加载完成后渲染项目列表
-        document.addEventListener('DOMContentLoaded', function() {
-            renderProjects();
-        });
-    </script>
+                    <!-- 重要度 -->
+                    <div class="form-item">
+                        <label for="modalTaskPriority">重要度</label>
+                        <select id="modalTaskPriority">
+                            <option value="低">低</option>
+                            <option value="中" selected>中</option>
+                            <option value="高">高</option>
+                        </select>
+                    </div>
+
+                    <!-- 类别 -->
+                    <div class="form-item">
+                        <label for="modalTaskCategory">类别</label>
+                        <select id="modalTaskCategory">
+                            <option value="工作" selected>工作</option>
+                            <option value="学习">学习</option>
+                            <option value="生活">生活</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+
+                    <!-- 赏金 -->
+                    <div class="form-item">
+                        <label for="modalTaskBounty">赏金</label>
+                        <input type="number" id="modalTaskBounty" step="0.01" min="0" placeholder="请输入任务赏金金额">
+                    </div>
+
+                    <!-- 完成状态 -->
+                    <div class="form-item">
+                        <label for="modalTaskCompleted">完成状态</label>
+                        <select id="modalTaskCompleted">
+                            <option value="false">未完成</option>
+                            <option value="true">已完成</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右下角：确认按钮 -->
+            <div class="modal-footer">
+                    <button class="btn-primary" onclick="confirmEditTask()">确认保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 项目详情浮层 ========== -->
+    <div id="projectDetailModal" class="modal-overlay" style="display: none;">
+        <div class="modal-container">
+            <!-- 左上角：返回按钮 -->
+            <div class="modal-header">
+                <button class="btn-secondary" onclick="closeProjectDetailModal()">返回</button>
+            </div>
+
+            <!-- 中间区域：项目详情与任务列表 -->
+            <div class="modal-body">
+                <h2 id="projectDetailTitle" class="modal-title">项目详情</h2>
+                <div id="projectDetailMeta" class="project-detail-meta" style="margin-bottom: 16px;"></div>
+                <div id="projectDetailTasks" class="task-list"></div>
+            </div>
+
+            <!-- 底部：编辑项目 / 添加任务 -->
+            <div class="modal-footer">
+                <div style="display:flex; gap:12px;">
+                    <button id="detailEditProjectBtn" class="btn-edit">编辑项目</button>
+                    <button id="detailAddTaskBtn" class="btn-success">添加任务</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入外部 JavaScript -->
+    <script src="app.js"></script>
 </body>
 </html>
