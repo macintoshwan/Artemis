@@ -30,37 +30,12 @@
             <div class="modal-body">
                 <h2 class="modal-title">新建项目</h2>
                 <div class="form-grid">
-                    <!-- 名称 -->
+                    <!-- 第一行：名称、重要度、赏金 -->
                     <div class="form-item">
                         <label for="modalProjectName">名称 <span class="required">*</span></label>
                         <input type="text" id="modalProjectName" placeholder="请输入项目名称">
                     </div>
 
-                    <!-- 预计开始时间 -->
-                    <div class="form-item">
-                        <label for="modalPlanStartDate">预计开始时间</label>
-                        <input type="date" id="modalPlanStartDate">
-                    </div>
-
-                    <!-- 预计结束时间 -->
-                    <div class="form-item">
-                        <label for="modalPlanEndDate">预计结束时间</label>
-                        <input type="date" id="modalPlanEndDate">
-                    </div>
-
-                    <!-- 实际开始时间 -->
-                    <div class="form-item">
-                        <label for="modalActualStartDate">实际开始时间</label>
-                        <input type="date" id="modalActualStartDate">
-                    </div>
-
-                    <!-- 实际结束时间 -->
-                    <div class="form-item">
-                        <label for="modalActualEndDate">实际结束时间</label>
-                        <input type="date" id="modalActualEndDate">
-                    </div>
-
-                    <!-- 重要度 -->
                     <div class="form-item">
                         <label for="modalPriority">重要度</label>
                         <select id="modalPriority">
@@ -70,7 +45,74 @@
                         </select>
                     </div>
 
-                    <!-- 类别 -->
+                    <div class="form-item">
+                        <label for="modalBounty">赏金</label>
+                        <input type="number" id="modalBounty" step="0.01" min="0" placeholder="请输入项目赏金金额">
+                    </div>
+
+                    <!-- 第二行：预计（开始、耗时、结束） -->
+                    <div class="form-item">
+                        <label for="modalPlanStartDate">预计开始时间</label>
+                        <div class="input-with-fix">
+                            <input type="text" id="modalPlanStartDate" readonly onclick="openDateTimePicker('modalPlanStartDate')" placeholder="点击选择时间">
+                            <button class="fix-btn" id="fixProjectPlanStart" onclick="fixProjectPlanStart()" disabled>修正</button>
+                        </div>
+                    </div>
+
+                    <div class="form-item">
+                        <label for="modalPlanDuration">预计耗时（小时）</label>
+                        <div class="input-with-fix">
+                            <input type="text" id="modalPlanDuration" readonly onclick="openDurationPicker('modalPlanDuration')" placeholder="点击选择耗时">
+                            <button class="fix-btn" id="fixProjectPlanDuration" onclick="fixProjectPlanDuration()" disabled>修正</button>
+                        </div>
+                    </div>
+
+                    <div class="form-item">
+                        <label for="modalPlanEndDate">预计结束时间</label>
+                        <div class="input-with-fix">
+                            <input type="text" id="modalPlanEndDate" readonly onclick="openDateTimePicker('modalPlanEndDate')" placeholder="点击选择时间">
+                            <button class="fix-btn" id="fixProjectPlanEnd" onclick="fixProjectPlanEnd()" disabled>修正</button>
+                        </div>
+                    </div>
+
+                    <!-- 预计相对时间显示 -->
+                    <div class="time-relative-row">
+                        <div class="time-relative-box" id="projectPlanStartRelative">-</div>
+                        <div class="time-relative-box" id="projectPlanEndRelative">-</div>
+                    </div>
+
+                    <!-- 第三行：实际（开始、耗时、结束） -->
+                    <div class="form-item">
+                        <label for="modalActualStartDate">实际开始时间</label>
+                        <div class="input-with-fix">
+                            <input type="text" id="modalActualStartDate" readonly onclick="openDateTimePicker('modalActualStartDate')" placeholder="点击选择时间">
+                            <button class="fix-btn" id="fixProjectActualStart" onclick="fixProjectActualStart()" disabled>修正</button>
+                        </div>
+                    </div>
+
+                    <div class="form-item">
+                        <label for="modalActualDuration">实际耗时（小时）</label>
+                        <div class="input-with-fix">
+                            <input type="text" id="modalActualDuration" readonly onclick="openDurationPicker('modalActualDuration')" placeholder="点击选择耗时">
+                            <button class="fix-btn" id="fixProjectActualDuration" onclick="fixProjectActualDuration()" disabled>修正</button>
+                        </div>
+                    </div>
+
+                    <div class="form-item">
+                        <label for="modalActualEndDate">实际结束时间</label>
+                        <div class="input-with-fix">
+                            <input type="text" id="modalActualEndDate" readonly onclick="openDateTimePicker('modalActualEndDate')" placeholder="点击选择时间">
+                            <button class="fix-btn" id="fixProjectActualEnd" onclick="fixProjectActualEnd()" disabled>修正</button>
+                        </div>
+                    </div>
+
+                    <!-- 实际相对时间显示 -->
+                    <div class="time-relative-row">
+                        <div class="time-relative-box" id="projectActualStartRelative">-</div>
+                        <div class="time-relative-box" id="projectActualEndRelative">-</div>
+                    </div>
+
+                    <!-- 第四行：类别 -->
                     <div class="form-item">
                         <label for="modalCategory">类别</label>
                         <select id="modalCategory">
@@ -80,18 +122,12 @@
                             <option value="其他">其他</option>
                         </select>
                     </div>
-
-                    <!-- 赏金 -->
-                    <div class="form-item">
-                        <label for="modalBounty">赏金</label>
-                        <input type="number" id="modalBounty" step="0.01" min="0" placeholder="请输入项目赏金金额">
-                    </div>
                 </div>
             </div>
 
             <!-- 右下角：确认按钮 -->
             <div class="modal-footer">
-                    <button class="btn-primary" onclick="confirmCreateProject()">确认创建</button>
+                    <button class="btn-primary" onclick="confirmCreateProject()">确认</button>
             </div>
         </div>
     </div>
@@ -108,37 +144,12 @@
             <div class="modal-body">
                 <h2 class="modal-title">编辑任务</h2>
                 <div class="form-grid">
-                    <!-- 名称 -->
+                    <!-- 第一行：名称、重要度、赏金 -->
                     <div class="form-item">
                         <label for="modalTaskName">名称 <span class="required">*</span></label>
                         <input type="text" id="modalTaskName" placeholder="请输入任务名称">
                     </div>
 
-                    <!-- 预计开始时间 -->
-                    <div class="form-item">
-                        <label for="modalTaskPlanStartDate">预计开始时间</label>
-                        <input type="date" id="modalTaskPlanStartDate">
-                    </div>
-
-                    <!-- 预计结束时间 -->
-                    <div class="form-item">
-                        <label for="modalTaskPlanEndDate">预计结束时间</label>
-                        <input type="date" id="modalTaskPlanEndDate">
-                    </div>
-
-                    <!-- 实际开始时间 -->
-                    <div class="form-item">
-                        <label for="modalTaskActualStartDate">实际开始时间</label>
-                        <input type="date" id="modalTaskActualStartDate">
-                    </div>
-
-                    <!-- 实际结束时间 -->
-                    <div class="form-item">
-                        <label for="modalTaskActualEndDate">实际结束时间</label>
-                        <input type="date" id="modalTaskActualEndDate">
-                    </div>
-
-                    <!-- 重要度 -->
                     <div class="form-item">
                         <label for="modalTaskPriority">重要度</label>
                         <select id="modalTaskPriority">
@@ -148,7 +159,82 @@
                         </select>
                     </div>
 
-                    <!-- 类别 -->
+                    <div class="form-item">
+                        <label for="modalTaskBounty">赏金</label>
+                        <input type="number" id="modalTaskBounty" step="0.01" min="0" placeholder="请输入任务赏金金额">
+                    </div>
+
+                    <!-- 第二行：预计（开始、耗时、结束） -->
+                    <div class="form-item">
+                        <label for="modalTaskPlanStartDate">预计开始时间</label>
+                        <div class="input-with-fix">
+                            <input type="text" id="modalTaskPlanStartDate" readonly onclick="openDateTimePicker('modalTaskPlanStartDate')" placeholder="点击选择时间">
+                            <button class="fix-btn" id="fixTaskPlanStart" onclick="fixTaskPlanStart()" disabled>修正</button>
+                        </div>
+                    </div>
+
+                    <div class="form-item">
+                        <label for="modalTaskPlanDuration">预计耗时（小时）</label>
+                        <div class="input-with-fix">
+                            <input type="text" id="modalTaskPlanDuration" readonly onclick="openDurationPicker('modalTaskPlanDuration')" placeholder="点击选择耗时">
+                            <button class="fix-btn" id="fixTaskPlanDuration" onclick="fixTaskPlanDuration()" disabled>修正</button>
+                        </div>
+                    </div>
+
+                    <div class="form-item">
+                        <label for="modalTaskPlanEndDate">预计结束时间</label>
+                        <div class="input-with-fix">
+                            <input type="text" id="modalTaskPlanEndDate" readonly onclick="openDateTimePicker('modalTaskPlanEndDate')" placeholder="点击选择时间">
+                            <button class="fix-btn" id="fixTaskPlanEnd" onclick="fixTaskPlanEnd()" disabled>修正</button>
+                        </div>
+                    </div>
+
+                    <!-- 预计相对时间显示 -->
+                    <div class="time-relative-row">
+                        <div class="time-relative-box" id="taskPlanStartRelative">-</div>
+                        <div class="time-relative-box" id="taskPlanEndRelative">-</div>
+                    </div>
+
+                    <!-- 第三行：实际（开始、耗时、结束） -->
+                    <div class="form-item">
+                        <label for="modalTaskActualStartDate">实际开始时间</label>
+                        <div class="input-with-fix">
+                            <input type="text" id="modalTaskActualStartDate" readonly onclick="openDateTimePicker('modalTaskActualStartDate')" placeholder="点击选择时间">
+                            <button class="fix-btn" id="fixTaskActualStart" onclick="fixTaskActualStart()" disabled>修正</button>
+                        </div>
+                    </div>
+
+                    <div class="form-item">
+                        <label for="modalTaskActualDuration">实际耗时（小时）</label>
+                        <div class="input-with-fix">
+                            <input type="text" id="modalTaskActualDuration" readonly onclick="openDurationPicker('modalTaskActualDuration')" placeholder="点击选择耗时">
+                            <button class="fix-btn" id="fixTaskActualDuration" onclick="fixTaskActualDuration()" disabled>修正</button>
+                        </div>
+                    </div>
+
+                    <div class="form-item">
+                        <label for="modalTaskActualEndDate">实际结束时间</label>
+                        <div class="input-with-fix">
+                            <input type="text" id="modalTaskActualEndDate" readonly onclick="openDateTimePicker('modalTaskActualEndDate')" placeholder="点击选择时间">
+                            <button class="fix-btn" id="fixTaskActualEnd" onclick="fixTaskActualEnd()" disabled>修正</button>
+                        </div>
+                    </div>
+
+                    <!-- 实际相对时间显示 -->
+                    <div class="time-relative-row">
+                        <div class="time-relative-box" id="taskActualStartRelative">-</div>
+                        <div class="time-relative-box" id="taskActualEndRelative">-</div>
+                    </div>
+
+                    <!-- 第四行：完成状态、类别 -->
+                    <div class="form-item">
+                        <label for="modalTaskCompleted">完成状态</label>
+                        <select id="modalTaskCompleted">
+                            <option value="false">未完成</option>
+                            <option value="true">已完成</option>
+                        </select>
+                    </div>
+
                     <div class="form-item">
                         <label for="modalTaskCategory">类别</label>
                         <select id="modalTaskCategory">
@@ -158,28 +244,14 @@
                             <option value="其他">其他</option>
                         </select>
                     </div>
-
-                    <!-- 赏金 -->
-                    <div class="form-item">
-                        <label for="modalTaskBounty">赏金</label>
-                        <input type="number" id="modalTaskBounty" step="0.01" min="0" placeholder="请输入任务赏金金额">
-                    </div>
-
-                    <!-- 完成状态 -->
-                    <div class="form-item">
-                        <label for="modalTaskCompleted">完成状态</label>
-                        <select id="modalTaskCompleted">
-                            <option value="false">未完成</option>
-                            <option value="true">已完成</option>
-                        </select>
-                    </div>
                 </div>
             </div>
 
-            <!-- 右下角：确认按钮 -->
-            <div class="modal-footer">
-                    <button class="btn-primary" onclick="confirmEditTask()">确认保存</button>
+            <!-- 右下角：确认按钮（仅在新建任务时显示） -->
+            <div class="modal-footer" id="taskModalFooter" style="display: none;">
+                <button class="btn-primary" onclick="confirmAddTask()">确认</button>
             </div>
+
         </div>
     </div>
 
@@ -204,6 +276,96 @@
                     <button id="detailEditProjectBtn" class="btn-edit">编辑项目</button>
                     <button id="detailAddTaskBtn" class="btn-success">添加任务</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 耗时选择器浮层 ========== -->
+    <div id="durationPickerModal" class="modal-overlay" style="display: none;">
+        <div class="modal-container duration-picker-container">
+            <!-- 头部：标题 -->
+            <div class="modal-header">
+                <h3 class="modal-title">选择耗时</h3>
+            </div>
+
+            <!-- 主体：小时和分钟选择 -->
+            <div class="modal-body">
+                <div class="picker-table-wrapper">
+                    <!-- 左侧：小时列表 -->
+                    <div class="picker-table-column">
+                        <h3>小时</h3>
+                        <div class="picker-table-content" id="durationHourTable">
+                            <!-- 动态生成小时列表 -->
+                        </div>
+                    </div>
+                    
+                    <!-- 右侧：分钟列表 -->
+                    <div class="picker-table-column">
+                        <h3>分钟</h3>
+                        <div class="picker-table-content" id="durationMinuteTable">
+                            <!-- 动态生成分钟列表 -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 底部输入行 -->
+                <div class="duration-custom-row">
+                    <input type="number" id="customDurationInput" placeholder="自定义（小时）" min="0">
+                    <button class="btn-primary" onclick="confirmDurationPicker()">确认</button>
+                </div>
+            </div>
+
+            <!-- 底部：取消按钮 -->
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeDurationPicker()">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 日期时间选择表格 ========== -->
+    <div id="dateTimePickerModal" class="modal-overlay" style="display: none;">
+        <div class="modal-container picker-container">
+            <!-- 顶部：返回按钮 -->
+            <div class="modal-header">
+                <button class="btn-secondary" onclick="closeDateTimePicker()">返回</button>
+            </div>
+
+            <!-- 主体：日期时间表格 -->
+            <div class="modal-body">
+                <h2 class="modal-title">选择日期时间</h2>
+                <div class="picker-table-wrapper">
+                    <!-- 左侧：日期列表 -->
+                    <div class="picker-table-column">
+                        <h3>日期</h3>
+                        <div class="picker-table-content" id="datePickerTable">
+                            <!-- 动态生成日期列表 -->
+                        </div>
+                        <div class="picker-relative-display" id="dateRelativeDisplay">今天</div>
+                    </div>
+                    
+                    <!-- 中间：小时列表 -->
+                    <div class="picker-table-column">
+                        <h3>小时</h3>
+                        <div class="picker-table-content" id="hourPickerTable">
+                            <!-- 动态生成小时列表 -->
+                        </div>
+                        <div class="picker-relative-display" id="hourRelativeDisplay">当前时刻</div>
+                    </div>
+                    
+                    <!-- 右侧：分钟列表 -->
+                    <div class="picker-table-column">
+                        <h3>分钟</h3>
+                        <div class="picker-table-content" id="minutePickerTable">
+                            <!-- 动态生成分钟列表 -->
+                        </div>
+                        <div class="picker-relative-display" id="minuteRelativeDisplay">0分钟</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 底部：确认按钮 -->
+            <div class="modal-footer">
+                <button class="btn-primary" onclick="confirmDateTimePicker()">确认</button>
             </div>
         </div>
     </div>

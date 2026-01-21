@@ -100,6 +100,17 @@ h1 {
     width: 100%;
 }
 
+/* 项目详情页文字样式 */
+.detail-info-text {
+    color: var(--text-color);
+    line-height: 1.8;
+}
+
+.detail-label {
+    color: var(--text-color);
+    font-weight: 600;
+}
+
 /* ========== 通用输入框样式 ========== */
 input[type="text"] {
     flex: 1;
@@ -108,6 +119,21 @@ input[type="text"] {
     border-radius: var(--radius-base);
     font-size: var(--font-size-base);
     outline: none;
+    transition: border-color var(--transition-fast);
+    background: var(--bg-page);
+    color: var(--text-primary);
+}
+
+/* 隐藏 number 输入框的上下调整按钮 */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield;
+}
     transition: border-color var(--transition-fast);
     background: var(--bg-page);
     color: var(--text-primary);
@@ -141,7 +167,7 @@ button:hover {
 /* 主要按钮 - 青绿色底+黄色描边+黑字 */
 .btn-primary {
     background: var(--color-cyan);
-    color: var(--text-on-module);
+    color: #000000;
     border-color: var(--border-module);
 }
 
@@ -154,10 +180,10 @@ button:hover {
     font-size: var(--font-size-small);
 }
 
-/* 成功按钮 - 透明底+黄色描边 */
+/* 成功按钮 - 青色背景+黑色文字 */
 .btn-success {
-    background: transparent;
-    color: var(--text-color);
+    background: var(--color-cyan);
+    color: #000000;
     border-color: var(--border-module);
     padding: var(--spacing-xs) var(--spacing-md);
 }
@@ -366,6 +392,7 @@ button:hover {
     padding: var(--spacing-lg) var(--spacing-xl);
     overflow-y: auto;
     flex: 1;
+    color: var(--text-color);
 }
 
 /* 浮层标题 - 黄色+青绿色下划线 */
@@ -378,10 +405,10 @@ button:hover {
     width: 100%;
 }
 
-/* 表单网格布局 - 两列 */
+/* 表单网格布局 - 三列 */
 .form-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: var(--spacing-lg);
 }
 
@@ -390,6 +417,68 @@ button:hover {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-xs);
+}
+
+/* 相对时间显示行 - 跨3列 */
+.time-relative-row {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-lg);
+    margin-top: calc(var(--spacing-xs) * -1);
+    margin-bottom: var(--spacing-sm);
+}
+
+/* 相对时间显示框 */
+.time-relative-box {
+    padding: 8px 10px;
+    text-align: center;
+    font-size: var(--font-size-small);
+    color: var(--text-color);
+    background: rgba(254, 165, 0, 0.12);
+    border: var(--border-width-task) solid var(--border-module);
+    border-radius: var(--radius-base);
+    font-weight: 600;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 输入框+修正按钮容器 */
+.input-with-fix {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.input-with-fix input {
+    flex: 1;
+}
+
+/* 修正按钮 */
+.fix-btn {
+    width: 40px;
+    height: 50px;
+    padding: 12px 0;
+    font-family: '方正粗宋简体', SimSun, serif;
+    font-size: 12px;
+    color: var(--text-color);
+    background-color: transparent;
+    border: 1px solid var(--text-color);
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.fix-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.fix-btn:not(:disabled):hover {
+    background-color: var(--text-color);
+    color: #000000;
 }
 
 /* 表单标签 - 黄色文字 */
@@ -418,6 +507,12 @@ button:hover {
     width: 100%;
     background: var(--bg-page);
     color: var(--text-primary);
+}
+
+/* 输入框验证不通过时的红色高亮 */
+.form-item input.invalid {
+    border-color: var(--color-danger);
+    color: var(--color-danger);
 }
 
 .form-item input:focus,
@@ -475,5 +570,149 @@ button:hover {
     .modal-body {
         padding: var(--spacing-md) var(--spacing-lg);
     }
+}
+
+/* ============================================================
+   耗时选择器浮层样式
+   ============================================================ */
+
+/* 耗时选择器容器 - 较小的浮层 */
+.duration-picker-container {
+    max-width: 600px;
+}
+
+/* 自定义耗时行 */
+.duration-custom-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+}
+
+.duration-custom-row input {
+    padding: var(--spacing-lg) var(--spacing-xl);
+    font-size: var(--font-size-large);
+    font-weight: 600;
+    background: var(--bg-page);
+    color: var(--text-primary);
+    border: var(--border-width-module) solid var(--border-module);
+    border-radius: var(--radius-base);
+    outline: none;
+}
+
+.duration-custom-row .btn-primary {
+    padding: var(--spacing-lg) var(--spacing-xl);
+    font-size: var(--font-size-large);
+    font-weight: 600;
+}
+
+/* 只读的耗时输入框样式 */
+input[readonly] {
+    cursor: pointer;
+    background: var(--bg-page);
+}
+
+/* ============================================================
+   日期时间表格选择器样式
+   ============================================================ */
+
+/* 选择器容器 */
+.picker-container {
+    max-width: 600px;
+}
+
+/* 表格包装器 */
+.picker-table-wrapper {
+    display: flex;
+    gap: var(--spacing-xl);
+    justify-content: center;
+    padding: var(--spacing-lg);
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-base);
+}
+
+/* 单列 */
+.picker-table-column {
+    flex: 1;
+    min-width: 180px;
+}
+
+.picker-table-column h3 {
+    text-align: center;
+    color: var(--text-color);
+    margin-bottom: var(--spacing-md);
+    font-size: var(--font-size-large);
+    font-weight: 600;
+}
+
+/* 列内容区 */
+.picker-table-content {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 450px;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+/* 隐藏滚动条 */
+.picker-table-content::-webkit-scrollbar {
+    width: 4px;
+}
+
+.picker-table-content::-webkit-scrollbar-track {
+    background: rgba(254, 165, 0, 0.05);
+    border-radius: 4px;
+}
+
+.picker-table-content::-webkit-scrollbar-thumb {
+    background: rgba(254, 165, 0, 0.3);
+    border-radius: 4px;
+}
+
+/* 选择项 */
+.picker-item {
+    padding: 10px 12px;
+    text-align: center;
+    font-size: var(--font-size-base);
+    color: var(--text-color);
+    background: rgba(255, 255, 255, 0.04);
+    border: var(--border-width-task) solid var(--border-module);
+    border-radius: var(--radius-base);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.picker-item:hover {
+    background: rgba(254, 165, 0, 0.08);
+    transform: translateX(2px);
+}
+
+/* 选中的选项 */
+.picker-item.selected {
+    background: #ff4444;
+    color: #ffffff;
+    border: 2px solid #ff4444;
+    font-weight: 600;
+    box-shadow: 0 0 8px rgba(255, 68, 68, 0.4);
+}
+
+/* 当前时刻选项 */
+.picker-item.current {
+    color: #ffffff;
+}
+
+/* 相对时间显示框 */
+.picker-relative-display {
+    margin-top: var(--spacing-md);
+    padding: 12px;
+    text-align: center;
+    font-size: var(--font-size-base);
+    color: var(--color-cyan);
+    background: rgba(102, 255, 204, 0.08);
+    border: var(--border-width-task) solid var(--color-cyan);
+    border-radius: var(--radius-base);
+    font-weight: 600;
 }
 
