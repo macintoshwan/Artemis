@@ -42,7 +42,14 @@
 // 配置常量
 // ============================================================
 
-// localStorage 存储的键名
+// Supabase 配置
+const SUPABASE_URL = 'https://eidkzutoxsrzqrezldwz.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpZGt6dXRveHNyenFyZXpsZHd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwMTgxNTAsImV4cCI6MjA4NDU5NDE1MH0.HspWBpjYNsaiL7kRvQB53d3rK2foQMTM9AUyLzhaZ-k';
+
+// 初始化 Supabase 客户端
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// localStorage 存储的键名（保留用于兼容性）
 const STORAGE_KEY = 'projectManagerData';
 
 // ============================================================
@@ -117,23 +124,81 @@ function validateTimeConsistency(prefix, type) {
 // ============================================================
 
 /**
- * 从 localStorage 读取所有项目数据
- * @returns {Array} 项目数组，如果没有数据则返回空数组
+ * 从 Supabase 读取所有项目数据
+ * @returns {Promise<Array>} 项目数组，如果没有数据则返回空数组
  */
-function getProjects() {
-    // 从 localStorage 获取 JSON 字符串
-    const data = localStorage.getItem(STORAGE_KEY);
-    // 如果有数据，解析为对象；否则返回空数组
-    return data ? JSON.parse(data) : [];
+async function getProjects() {
+    try {
+        const { data, error } = await supabase
+            .from('projects')
+            .select(`
+                *,
+                tasks (*)
+            `)
+            .order('created_at', { ascending: false });
+        
+        if (error) {
+            console.error('Error loading projects:', error);
+            return [];
+        }
+        
+        return data || [];
+    } catch (err) {
+        console.error('Error fetching projects:', err);
+        return [];
+    }
 }
 
 /**
- * 将项目数据保存到 localStorage
+ * 保存单个项目到 Supabase
+ * @param {Object} project - 要保存的项目对象
+ */
+async function saveProject(project) {
+    try {
+        // 准备项目数据（不包含tasks）
+        const { tasks, ...projectData } = project;
+        
+        // 保存或更新项目
+        const { data: savedProject, error: projectError } = await supabase
+            .from('projects')
+            .upsert(projectData)
+            .select()
+            .single();
+        
+        if (projectError) {
+            console.error('Error saving project:', projectError);
+            return;
+        }
+        
+        // 如果有任务，保存任务
+        if (tasks && tasks.length > 0) {
+            // 为每个任务添加 project_id
+            const tasksWithProjectId = tasks.map(task => ({
+                ...task,
+                project_id: savedProject.id
+            }));
+            
+            const { error: tasksError } = await supabase
+                .from('tasks')
+                .upsert(tasksWithProjectId);
+            
+            if (tasksError) {
+                console.error('Error saving tasks:', tasksError);
+            }
+        }
+    } catch (err) {
+        console.error('Error in saveProject:', err);
+    }
+}
+
+/**
+ * 保存多个项目到 Supabase（兼容旧代码）
  * @param {Array} projects - 要保存的项目数组
  */
-function saveProjects(projects) {
-    // 将对象转换为 JSON 字符串存储
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+async function saveProjects(projects) {
+    for (const project of projects) {
+        await saveProject(project);
+    }
 }
 
 // ============================================================
@@ -220,9 +285,9 @@ function resetModalForm() {
 
 /**
  * 确认创建项目
- * 验证输入、收集数据、保存到localStorage、刷新列表
+ * 验证输入、收集数据、保存到Supabase、刷新列表
  */
-function confirmCreateProject() {
+async function confirmCreateProject() {
     // ① 验证：名称不能为空
     const name = document.getElementById('modalProjectName').value.trim();
     if (!name) {
@@ -243,46 +308,45 @@ function confirmCreateProject() {
     // 赏金转换为数字，如果为空则默认为0
     const bounty = bountyValue ? parseFloat(bountyValue) : 0;
     
-    const projects = getProjects();
+    const projects = await getProjects();
     if (currentEditingProjectId) {
         // 编辑项目模式：更新已有项目
         const project = projects.find(p => p.id === currentEditingProjectId);
         if (project) {
             project.name = name;
-            project.planStartDate = planStartDate;
-            project.planEndDate = planEndDate;
-            project.planDuration = planDuration;
-            project.actualStartDate = actualStartDate;
-            project.actualEndDate = actualEndDate;
-            project.actualDuration = actualDuration;
+            project.plan_start_date = planStartDate;
+            project.plan_end_date = planEndDate;
+            project.plan_duration = planDuration;
+            project.actual_start_date = actualStartDate;
+            project.actual_end_date = actualEndDate;
+            project.actual_duration = actualDuration;
             project.priority = priority;
             project.category = category;
             project.bounty = bounty;
-            saveProjects(projects);
+            await saveProject(project);
         }
     } else {
         // 新建项目模式
         const newProject = {
             id: Date.now(),
             name,
-            planStartDate,
-            planEndDate,
-            planDuration,
-            actualStartDate,
-            actualEndDate,
-            actualDuration,
+            plan_start_date: planStartDate,
+            plan_end_date: planEndDate,
+            plan_duration: planDuration,
+            actual_start_date: actualStartDate,
+            actual_end_date: actualEndDate,
+            actual_duration: actualDuration,
             priority,
             category,
             bounty,
             tasks: []
         };
-        projects.push(newProject);
-        saveProjects(projects);
+        await saveProject(newProject);
     }
     
     // ④ 刷新：隐藏浮层，重新渲染项目列表
     closeCreateProjectModal();
-    renderProjects();
+    await renderProjects();
     
     // ⑤ 清空：下次打开时表单会被resetModalForm()重置
 }
@@ -301,8 +365,8 @@ let currentDetailProjectId = null;
  * 打开编辑项目浮层（复用新建项目浮层）
  * @param {number} projectId 
  */
-function openEditProjectModal(projectId) {
-    const projects = getProjects();
+async function openEditProjectModal(projectId) {
+    const projects = await getProjects();
     const project = projects.find(p => p.id === projectId);
     if (!project) return;
 
@@ -322,21 +386,21 @@ function openEditProjectModal(projectId) {
         window._returnToProjectDetailId = null;
     }
 
-    // 填充表单
+    // 填充表单（映射数据库字段名）
     document.getElementById('modalProjectName').value = project.name || '';
-    document.getElementById('modalPlanStartDate').value = project.planStartDate || '';
-    document.getElementById('modalPlanEndDate').value = project.planEndDate || '';
+    document.getElementById('modalPlanStartDate').value = project.plan_start_date || '';
+    document.getElementById('modalPlanEndDate').value = project.plan_end_date || '';
     
     const planDurationField = document.getElementById('modalPlanDuration');
-    const planDuration = project.planDuration ?? '';
+    const planDuration = project.plan_duration ?? '';
     planDurationField.setAttribute('data-hours', planDuration);
     planDurationField.value = planDuration ? formatDuration(planDuration) : '';
     
-    document.getElementById('modalActualStartDate').value = project.actualStartDate || '';
-    document.getElementById('modalActualEndDate').value = project.actualEndDate || '';
+    document.getElementById('modalActualStartDate').value = project.actual_start_date || '';
+    document.getElementById('modalActualEndDate').value = project.actual_end_date || '';
     
     const actualDurationField = document.getElementById('modalActualDuration');
-    const actualDuration = project.actualDuration ?? '';
+    const actualDuration = project.actual_duration ?? '';
     actualDurationField.setAttribute('data-hours', actualDuration);
     actualDurationField.value = actualDuration ? formatDuration(actualDuration) : '';
     
@@ -382,9 +446,9 @@ function closeProjectDetailModal() {
 /**
  * 渲染项目详情内容（标题、元信息、任务列表）
  */
-function renderProjectDetailContent() {
+async function renderProjectDetailContent() {
     if (!currentDetailProjectId) return;
-    const projects = getProjects();
+    const projects = await getProjects();
     const project = projects.find(p => p.id === currentDetailProjectId);
     if (!project) return;
 
@@ -399,29 +463,29 @@ function renderProjectDetailContent() {
     if (project.tasks && project.tasks.length > 0) {
         project.tasks.forEach(task => {
             // 预计时间
-            if (task.planStartDate) {
-                const taskStart = new Date(task.planStartDate);
+            if (task.plan_start_date) {
+                const taskStart = new Date(task.plan_start_date);
                 if (!planStart || taskStart < planStart) planStart = taskStart;
             }
-            if (task.planEndDate) {
-                const taskEnd = new Date(task.planEndDate);
+            if (task.plan_end_date) {
+                const taskEnd = new Date(task.plan_end_date);
                 if (!planEnd || taskEnd > planEnd) planEnd = taskEnd;
             }
-            if (task.planDuration) {
-                planDurationSum += parseFloat(task.planDuration);
+            if (task.plan_duration) {
+                planDurationSum += parseFloat(task.plan_duration);
             }
             
             // 实际时间
-            if (task.actualStartDate) {
-                const taskStart = new Date(task.actualStartDate);
+            if (task.actual_start_date) {
+                const taskStart = new Date(task.actual_start_date);
                 if (!actualStart || taskStart < actualStart) actualStart = taskStart;
             }
-            if (task.actualEndDate) {
-                const taskEnd = new Date(task.actualEndDate);
+            if (task.actual_end_date) {
+                const taskEnd = new Date(task.actual_end_date);
                 if (!actualEnd || taskEnd > actualEnd) actualEnd = taskEnd;
             }
-            if (task.actualDuration) {
-                actualDurationSum += parseFloat(task.actualDuration);
+            if (task.actual_duration) {
+                actualDurationSum += parseFloat(task.actual_duration);
             }
         });
     }
@@ -687,17 +751,23 @@ function addTask(projectId) {
  * @param {number} projectId - 项目ID
  * @param {number} taskId - 任务ID
  */
-function deleteTask(projectId, taskId) {
-    const projects = getProjects();
-    const project = projects.find(p => p.id === projectId);
-    
-    if (project) {
-        // 过滤掉要删除的任务
-        project.tasks = project.tasks.filter(t => t.id !== taskId);
-        saveProjects(projects);
+async function deleteTask(projectId, taskId) {
+    try {
+        // 直接从数据库删除任务
+        const { error } = await supabase
+            .from('tasks')
+            .delete()
+            .eq('id', taskId);
+        
+        if (error) {
+            console.error('Error deleting task:', error);
+            return;
+        }
+        
+        await renderProjects();
+    } catch (err) {
+        console.error('Error in deleteTask:', err);
     }
-    
-    renderProjects();
 }
 
 /**
@@ -705,20 +775,35 @@ function deleteTask(projectId, taskId) {
  * @param {number} projectId - 项目ID
  * @param {number} taskId - 任务ID
  */
-function toggleTask(projectId, taskId) {
-    const projects = getProjects();
-    const project = projects.find(p => p.id === projectId);
-    
-    if (project) {
-        const task = project.tasks.find(t => t.id === taskId);
-        if (task) {
-            // 切换完成状态
-            task.completed = !task.completed;
-            saveProjects(projects);
+async function toggleTask(projectId, taskId) {
+    try {
+        // 获取当前任务状态
+        const { data: task, error: fetchError } = await supabase
+            .from('tasks')
+            .select('completed')
+            .eq('id', taskId)
+            .single();
+        
+        if (fetchError) {
+            console.error('Error fetching task:', fetchError);
+            return;
         }
+        
+        // 切换状态
+        const { error: updateError } = await supabase
+            .from('tasks')
+            .update({ completed: !task.completed })
+            .eq('id', taskId);
+        
+        if (updateError) {
+            console.error('Error updating task:', updateError);
+            return;
+        }
+        
+        await renderProjects();
+    } catch (err) {
+        console.error('Error in toggleTask:', err);
     }
-    
-    renderProjects();
 }
 
 /**
@@ -772,21 +857,21 @@ function openEditTaskModal(projectId, taskId) {
     currentEditingTask.projectId = projectId;
     currentEditingTask.taskId = taskId;
 
-    // 填充表单数据
+    // 填充表单数据（映射数据库字段）
     document.getElementById('modalTaskName').value = task.name || '';
-    document.getElementById('modalTaskPlanStartDate').value = task.planStartDate || '';
-    document.getElementById('modalTaskPlanEndDate').value = task.planEndDate || '';
+    document.getElementById('modalTaskPlanStartDate').value = task.plan_start_date || '';
+    document.getElementById('modalTaskPlanEndDate').value = task.plan_end_date || '';
     
     const planDurationField = document.getElementById('modalTaskPlanDuration');
-    const planDuration = task.planDuration ?? '';
+    const planDuration = task.plan_duration ?? '';
     planDurationField.setAttribute('data-hours', planDuration);
     planDurationField.value = planDuration ? formatDuration(planDuration) : '';
     
-    document.getElementById('modalTaskActualStartDate').value = task.actualStartDate || '';
-    document.getElementById('modalTaskActualEndDate').value = task.actualEndDate || '';
+    document.getElementById('modalTaskActualStartDate').value = task.actual_start_date || '';
+    document.getElementById('modalTaskActualEndDate').value = task.actual_end_date || '';
     
     const actualDurationField = document.getElementById('modalTaskActualDuration');
-    const actualDuration = task.actualDuration ?? '';
+    const actualDuration = task.actual_duration ?? '';
     actualDurationField.setAttribute('data-hours', actualDuration);
     actualDurationField.value = actualDuration ? formatDuration(actualDuration) : '';
     
@@ -915,7 +1000,7 @@ function confirmEditTask() {
 /**
  * 确认添加任务
  */
-function confirmAddTask() {
+async function confirmAddTask() {
     // 获取表单数据
     const name = document.getElementById('modalTaskName').value.trim();
     const planStartDate = document.getElementById('modalTaskPlanStartDate').value;
@@ -935,27 +1020,37 @@ function confirmAddTask() {
         return;
     }
 
-    // 新建任务
-    const projects = getProjects();
-    const project = projects.find(p => p.id === currentEditingTask.projectId);
-    if (project) {
-        project.tasks.push({
-            id: Date.now(),
-            name,
-            planStartDate,
-            planEndDate,
-            planDuration,
-            actualStartDate,
-            actualEndDate,
-            actualDuration,
-            priority,
-            category,
-            bounty,
-            completed
-        });
-        saveProjects(projects);
-        renderProjects();
-        renderProjectDetailContent();
+    try {
+        // 新建任务直接插入数据库
+        const { error } = await supabase
+            .from('tasks')
+            .insert({
+                id: Date.now(),
+                project_id: currentEditingTask.projectId,
+                name,
+                plan_start_date: planStartDate,
+                plan_end_date: planEndDate,
+                plan_duration: planDuration,
+                actual_start_date: actualStartDate,
+                actual_end_date: actualEndDate,
+                actual_duration: actualDuration,
+                priority,
+                category,
+                bounty,
+                completed
+            });
+        
+        if (error) {
+            console.error('Error creating task:', error);
+            alert('创建任务失败，请重试');
+            return;
+        }
+        
+        await renderProjects();
+        await renderProjectDetailContent();
+    } catch (err) {
+        console.error('Error in confirmAddTask:', err);
+        alert('创建任务失败，请重试');
     }
 
     // 关闭浮层
@@ -996,9 +1091,9 @@ function saveTaskName(projectId, taskId) {
 /**
  * 渲染所有项目到页面
  */
-function renderProjects() {
+async function renderProjects() {
     const container = document.getElementById('projectList');
-    const projects = getProjects();
+    const projects = await getProjects();
 
     // 如果没有项目，显示空状态提示
     if (projects.length === 0) {
@@ -1125,8 +1220,8 @@ function attachTaskValidationListeners() {
 // ============================================================
 
 // 页面加载完成后渲染项目列表
-document.addEventListener('DOMContentLoaded', function() {
-    renderProjects();
+document.addEventListener('DOMContentLoaded', async function() {
+    await renderProjects();
 });
 
 // ============================================================
@@ -1325,7 +1420,7 @@ function attachProjectAutoSaveListeners() {
 /**
  * 自动保存项目数据
  */
-function autoSaveProject() {
+async function autoSaveProject() {
     if (!currentEditingProjectId) return;
     
     // 获取表单数据
@@ -1346,22 +1441,22 @@ function autoSaveProject() {
     const bounty = bountyValue ? parseFloat(bountyValue) : 0;
     
     // 更新项目数据
-    const projects = getProjects();
+    const projects = await getProjects();
     const project = projects.find(p => p.id === currentEditingProjectId);
     if (project) {
         project.name = name;
-        project.planStartDate = planStartDate;
-        project.planEndDate = planEndDate;
-        project.planDuration = planDuration;
-        project.actualStartDate = actualStartDate;
-        project.actualEndDate = actualEndDate;
-        project.actualDuration = actualDuration;
+        project.plan_start_date = planStartDate;
+        project.plan_end_date = planEndDate;
+        project.plan_duration = planDuration;
+        project.actual_start_date = actualStartDate;
+        project.actual_end_date = actualEndDate;
+        project.actual_duration = actualDuration;
         project.priority = priority;
         project.category = category;
         project.bounty = bounty;
-        saveProjects(projects);
-        renderProjects();
-        renderProjectDetailContent();
+        await saveProject(project);
+        await renderProjects();
+        await renderProjectDetailContent();
     }
     
     // 更新相对时间显示和验证状态
@@ -1415,7 +1510,7 @@ function attachTaskAutoSaveListeners() {
 /**
  * 自动保存任务数据
  */
-function autoSaveTask() {
+async function autoSaveTask() {
     if (!currentEditingTask.taskId) return;
     
     // 获取表单数据
@@ -1435,27 +1530,34 @@ function autoSaveTask() {
     const bounty = parseFloat(document.getElementById('modalTaskBounty').value) || 0;
     const completed = document.getElementById('modalTaskCompleted').value === 'true';
     
-    // 更新任务数据
-    const projects = getProjects();
-    const project = projects.find(p => p.id === currentEditingTask.projectId);
-    if (project) {
-        const task = project.tasks.find(t => t.id === currentEditingTask.taskId);
-        if (task) {
-            task.name = name;
-            task.planStartDate = planStartDate;
-            task.planEndDate = planEndDate;
-            task.planDuration = planDuration;
-            task.actualStartDate = actualStartDate;
-            task.actualEndDate = actualEndDate;
-            task.actualDuration = actualDuration;
-            task.priority = priority;
-            task.category = category;
-            task.bounty = bounty;
-            task.completed = completed;
-            saveProjects(projects);
-            renderProjects();
-            renderProjectDetailContent();
+    try {
+        // 直接更新数据库中的任务
+        const { error } = await supabase
+            .from('tasks')
+            .update({
+                name,
+                plan_start_date: planStartDate,
+                plan_end_date: planEndDate,
+                plan_duration: planDuration,
+                actual_start_date: actualStartDate,
+                actual_end_date: actualEndDate,
+                actual_duration: actualDuration,
+                priority,
+                category,
+                bounty,
+                completed
+            })
+            .eq('id', currentEditingTask.taskId);
+        
+        if (error) {
+            console.error('Error saving task:', error);
+            return;
         }
+        
+        await renderProjects();
+        await renderProjectDetailContent();
+    } catch (err) {
+        console.error('Error in autoSaveTask:', err);
     }
     
     // 更新相对时间显示和验证状态
