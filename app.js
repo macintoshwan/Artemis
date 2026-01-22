@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ============================================================
  * 极简项目管理系统 - JavaScript 逻辑
  * ============================================================
@@ -47,7 +47,7 @@ const SUPABASE_URL = 'https://eidkzutoxsrzqrezldwz.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpZGt6dXRveHNyenFyZXpsZHd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwMTgxNTAsImV4cCI6MjA4NDU5NDE1MH0.HspWBpjYNsaiL7kRvQB53d3rK2foQMTM9AUyLzhaZ-k';
 
 // 初始化 Supabase 客户端
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // localStorage 存储的键名（保留用于兼容性）
 const STORAGE_KEY = 'projectManagerData';
@@ -129,7 +129,7 @@ function validateTimeConsistency(prefix, type) {
  */
 async function getProjects() {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('projects')
             .select(`
                 *,
@@ -159,7 +159,7 @@ async function saveProject(project) {
         const { tasks, ...projectData } = project;
         
         // 保存或更新项目
-        const { data: savedProject, error: projectError } = await supabase
+        const { data: savedProject, error: projectError } = await supabaseClient
             .from('projects')
             .upsert(projectData)
             .select()
@@ -178,7 +178,7 @@ async function saveProject(project) {
                 project_id: savedProject.id
             }));
             
-            const { error: tasksError } = await supabase
+            const { error: tasksError } = await supabaseClient
                 .from('tasks')
                 .upsert(tasksWithProjectId);
             
@@ -754,7 +754,7 @@ function addTask(projectId) {
 async function deleteTask(projectId, taskId) {
     try {
         // 直接从数据库删除任务
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('tasks')
             .delete()
             .eq('id', taskId);
@@ -778,7 +778,7 @@ async function deleteTask(projectId, taskId) {
 async function toggleTask(projectId, taskId) {
     try {
         // 获取当前任务状态
-        const { data: task, error: fetchError } = await supabase
+        const { data: task, error: fetchError } = await supabaseClient
             .from('tasks')
             .select('completed')
             .eq('id', taskId)
@@ -790,7 +790,7 @@ async function toggleTask(projectId, taskId) {
         }
         
         // 切换状态
-        const { error: updateError } = await supabase
+        const { error: updateError } = await supabaseClient
             .from('tasks')
             .update({ completed: !task.completed })
             .eq('id', taskId);
@@ -1022,7 +1022,7 @@ async function confirmAddTask() {
 
     try {
         // 新建任务直接插入数据库
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('tasks')
             .insert({
                 id: Date.now(),
@@ -1532,7 +1532,7 @@ async function autoSaveTask() {
     
     try {
         // 直接更新数据库中的任务
-        const { error } = await supabase
+        const { error } = await supabaseClient
             .from('tasks')
             .update({
                 name,
@@ -2318,4 +2318,5 @@ function formatDuration(hours) {
         return `${h}小时${m}分钟`;
     }
 }
+
 
