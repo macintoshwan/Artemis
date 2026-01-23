@@ -536,7 +536,7 @@ async function renderProjectDetailContent() {
  * 打开“添加任务”浮层（复用编辑任务浮层，taskId=null）
  * @param {number} projectId 
  */
-function openAddTaskForProject(projectId) {    // 关闭项目详情浮层并记录返回路径
+async function openAddTaskForProject(projectId) {    // 关闭项目详情浮层并记录返回路径
     const detailModal = document.getElementById('projectDetailModal');
     if (detailModal && detailModal.style.display === 'flex') {
         detailModal.style.display = 'none';
@@ -563,7 +563,7 @@ function openAddTaskForProject(projectId) {    // 关闭项目详情浮层并记
     document.getElementById('modalTaskActualEndDate').value = '';
     document.getElementById('modalTaskPriority').value = '中';
     // 类别默认继承项目
-    const projects = getProjects();
+    const projects = await getProjects();
     const project = projects.find(p => p.id === projectId);
     document.getElementById('modalTaskCategory').value = project?.category || '工作';
     document.getElementById('modalTaskBounty').value = '';
@@ -588,7 +588,7 @@ function openAddTaskForProject(projectId) {    // 关闭项目详情浮层并记
  * 添加新项目（保留此函数以兼容可能的旧调用，但主要使用浮层方式创建）
  * @deprecated 建议使用 openCreateProjectModal() 和 confirmCreateProject()
  */
-function addProject() {
+async function addProject() {
     const input = document.getElementById('projectInput');
     if (!input) return; // 如果输入框不存在，直接返回
     
@@ -601,7 +601,7 @@ function addProject() {
     }
 
     // 读取现有项目
-    const projects = getProjects();
+    const projects = await getProjects();
     
     // 创建新项目对象
     const newProject = {
@@ -625,13 +625,13 @@ function addProject() {
  * 删除项目
  * @param {number} projectId - 要删除的项目ID
  */
-function deleteProject(projectId) {
+async function deleteProject(projectId) {
     if (!confirm('确定要删除这个项目吗？所有任务也会被删除！')) {
         return;
     }
 
     // 读取项目数据
-    const projects = getProjects();
+    const projects = await getProjects();
     
     // 过滤掉要删除的项目（保留ID不匹配的项目）
     const updatedProjects = projects.filter(p => p.id !== projectId);
@@ -667,25 +667,25 @@ function startEditProject(projectId) {
  * 保存编辑后的项目名称
  * @param {number} projectId - 项目ID
  */
-function saveProjectName(projectId) {
+async function saveProjectName(projectId) {
     const input = document.getElementById(`edit-project-${projectId}`);
     if (!input) return;
     
     const newName = input.value.trim();
     if (!newName) {
-        renderProjects(); // 如果为空，恢复原来的显示
+        await renderProjects(); // 如果为空，恢复原来的显示
         return;
     }
 
     // 读取、修改、保存
-    const projects = getProjects();
+    const projects = await getProjects();
     const project = projects.find(p => p.id === projectId);
     if (project) {
         project.name = newName;
-        saveProjects(projects);
+        await saveProject(project);
     }
     
-    renderProjects();
+    await renderProjects();
 }
 
 // ============================================================
@@ -696,7 +696,7 @@ function saveProjectName(projectId) {
  * 添加新任务到指定项目
  * @param {number} projectId - 项目ID
  */
-function addTask(projectId) {
+async function addTask(projectId) {
     const input = document.getElementById(`task-input-${projectId}`);
     const name = input.value.trim();
     
@@ -706,7 +706,7 @@ function addTask(projectId) {
     }
 
     // 读取项目数据
-    const projects = getProjects();
+    const projects = await getProjects();
     
     // 找到对应的项目
     const project = projects.find(p => p.id === projectId);
@@ -834,8 +834,8 @@ let currentEditingTask = {
  * @param {number} projectId - 项目ID
  * @param {number} taskId - 任务ID
  */
-function openEditTaskModal(projectId, taskId) {
-    const projects = getProjects();
+async function openEditTaskModal(projectId, taskId) {
+    const projects = await getProjects();
     const project = projects.find(p => p.id === projectId);
     const task = project?.tasks.find(t => t.id === taskId);
     
@@ -1062,26 +1062,26 @@ async function confirmAddTask() {
  * @param {number} projectId - 项目ID
  * @param {number} taskId - 任务ID
  */
-function saveTaskName(projectId, taskId) {
+async function saveTaskName(projectId, taskId) {
     const input = document.getElementById(`edit-task-${taskId}`);
     if (!input) return;
     
     const newName = input.value.trim();
     if (!newName) {
-        renderProjects();
+        await renderProjects();
         return;
     }
 
-    const projects = getProjects();
+    const projects = await getProjects();
     const project = projects.find(p => p.id === projectId);
     const task = project?.tasks.find(t => t.id === taskId);
     
     if (task) {
         task.name = newName;
-        saveProjects(projects);
+        await saveProjects(projects);
     }
     
-    renderProjects();
+    await renderProjects();
 }
 
 // ============================================================
