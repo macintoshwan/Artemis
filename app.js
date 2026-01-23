@@ -67,7 +67,16 @@ function setupRealtimeSubscription() {
                 }
             }
         )
-        .subscribe();
+        .subscribe((status) => {
+            console.log('Projects channel status:', status);
+            // 如果断线，5秒后重连
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                console.log('Reconnecting projects channel in 5 seconds...');
+                setTimeout(() => {
+                    setupRealtimeSubscription();
+                }, 5000);
+            }
+        });
     
     // 监听 tasks 表变化
     supabaseClient
@@ -82,7 +91,16 @@ function setupRealtimeSubscription() {
                 }
             }
         )
-        .subscribe();
+        .subscribe((status) => {
+            console.log('Tasks channel status:', status);
+            // 如果断线，5秒后重连
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                console.log('Reconnecting tasks channel in 5 seconds...');
+                setTimeout(() => {
+                    setupRealtimeSubscription();
+                }, 5000);
+            }
+        });
 }
 
 // ============================================================
