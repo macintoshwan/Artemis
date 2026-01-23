@@ -52,6 +52,39 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 // localStorage 存储的键名（保留用于兼容性）
 const STORAGE_KEY = 'projectManagerData';
 
+// 启动 Supabase 实时监听
+function setupRealtimeSubscription() {
+    // 监听 projects 表变化
+    supabaseClient
+        .channel('projects-channel')
+        .on('postgres_changes', 
+            { event: '*', schema: 'public', table: 'projects' },
+            async (payload) => {
+                console.log('Project changed:', payload);
+                await renderProjects();
+                if (currentDetailProjectId) {
+                    await renderProjectDetailContent();
+                }
+            }
+        )
+        .subscribe();
+    
+    // 监听 tasks 表变化
+    supabaseClient
+        .channel('tasks-channel')
+        .on('postgres_changes',
+            { event: '*', schema: 'public', table: 'tasks' },
+            async (payload) => {
+                console.log('Task changed:', payload);
+                await renderProjects();
+                if (currentDetailProjectId) {
+                    await renderProjectDetailContent();
+                }
+            }
+        )
+        .subscribe();
+}
+
 // ============================================================
 // 时间验证辅助函数
 // ============================================================
@@ -520,7 +553,7 @@ async function renderProjectDetailContent() {
                 <div class="task-item">
                     <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${project.id}, ${task.id}); renderProjectDetailContent();">
                     <span class="task-name ${task.completed ? 'completed' : ''}" id="task-name-${task.id}" onclick="startEditTask(${project.id}, ${task.id})">${escapeHtml(task.name)}</span>
-                    <button class="btn-danger" onclick="deleteTask(${project.id}, ${task.id}); renderProjectDetailContent();">删除</button>
+                    <button class="btn-danger" onclick="deleteTask(${project.id}, ${task.id})">删除</button>
                 </div>
             `).join('');
     }
@@ -765,6 +798,11 @@ async function deleteTask(projectId, taskId) {
         }
         
         await renderProjects();
+        
+        // 如果当前在项目详情页，也刷新详情页
+        if (currentDetailProjectId) {
+            await renderProjectDetailContent();
+        }
     } catch (err) {
         console.error('Error in deleteTask:', err);
     }
@@ -1222,6 +1260,7 @@ function attachTaskValidationListeners() {
 // 页面加载完成后渲染项目列表
 document.addEventListener('DOMContentLoaded', async function() {
     await renderProjects();
+    setupRealtimeSubscription(); // 启动实时监听
 });
 
 // ============================================================
