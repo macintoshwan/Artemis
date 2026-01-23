@@ -663,15 +663,27 @@ async function deleteProject(projectId) {
         return;
     }
 
-    // 读取项目数据
-    const projects = await getProjects();
-    
-    // 过滤掉要删除的项目（保留ID不匹配的项目）
-    const updatedProjects = projects.filter(p => p.id !== projectId);
-    
-    // 保存并重新渲染
-    saveProjects(updatedProjects);
-    renderProjects();
+    try {
+        // 直接从数据库删除项目（CASCADE会自动删除关联的任务）
+        const { error } = await supabaseClient
+            .from('projects')
+            .delete()
+            .eq('id', projectId);
+        
+        if (error) {
+            console.error('Error deleting project:', error);
+            return;
+        }
+        
+        await renderProjects();
+        
+        // 如果当前在项目详情页，关闭详情页
+        if (currentDetailProjectId === projectId) {
+            closeProjectDetail();
+        }
+    } catch (err) {
+        console.error('Error in deleteProject:', err);
+    }
 }
 
 /**
