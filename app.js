@@ -314,11 +314,11 @@ async function confirmCreateProject() {
         const project = projects.find(p => p.id === currentEditingProjectId);
         if (project) {
             project.name = name;
-            project.plan_start_date = planStartDate;
-            project.plan_end_date = planEndDate;
+            project.plan_start_date = planStartDate || null;
+            project.plan_end_date = planEndDate || null;
             project.plan_duration = planDuration;
-            project.actual_start_date = actualStartDate;
-            project.actual_end_date = actualEndDate;
+            project.actual_start_date = actualStartDate || null;
+            project.actual_end_date = actualEndDate || null;
             project.actual_duration = actualDuration;
             project.priority = priority;
             project.category = category;
@@ -330,11 +330,11 @@ async function confirmCreateProject() {
         const newProject = {
             id: Date.now(),
             name,
-            plan_start_date: planStartDate,
-            plan_end_date: planEndDate,
+            plan_start_date: planStartDate || null,
+            plan_end_date: planEndDate || null,
             plan_duration: planDuration,
-            actual_start_date: actualStartDate,
-            actual_end_date: actualEndDate,
+            actual_start_date: actualStartDate || null,
+            actual_end_date: actualEndDate || null,
             actual_duration: actualDuration,
             priority,
             category,
@@ -1028,11 +1028,11 @@ async function confirmAddTask() {
                 id: Date.now(),
                 project_id: currentEditingTask.projectId,
                 name,
-                plan_start_date: planStartDate,
-                plan_end_date: planEndDate,
+                plan_start_date: planStartDate || null,
+                plan_end_date: planEndDate || null,
                 plan_duration: planDuration,
-                actual_start_date: actualStartDate,
-                actual_end_date: actualEndDate,
+                actual_start_date: actualStartDate || null,
+                actual_end_date: actualEndDate || null,
                 actual_duration: actualDuration,
                 priority,
                 category,
@@ -1445,11 +1445,11 @@ async function autoSaveProject() {
     const project = projects.find(p => p.id === currentEditingProjectId);
     if (project) {
         project.name = name;
-        project.plan_start_date = planStartDate;
-        project.plan_end_date = planEndDate;
+        project.plan_start_date = planStartDate || null;
+        project.plan_end_date = planEndDate || null;
         project.plan_duration = planDuration;
-        project.actual_start_date = actualStartDate;
-        project.actual_end_date = actualEndDate;
+        project.actual_start_date = actualStartDate || null;
+        project.actual_end_date = actualEndDate || null;
         project.actual_duration = actualDuration;
         project.priority = priority;
         project.category = category;
@@ -1536,11 +1536,11 @@ async function autoSaveTask() {
             .from('tasks')
             .update({
                 name,
-                plan_start_date: planStartDate,
-                plan_end_date: planEndDate,
+                plan_start_date: planStartDate || null,
+                plan_end_date: planEndDate || null,
                 plan_duration: planDuration,
-                actual_start_date: actualStartDate,
-                actual_end_date: actualEndDate,
+                actual_start_date: actualStartDate || null,
+                actual_end_date: actualEndDate || null,
                 actual_duration: actualDuration,
                 priority,
                 category,
