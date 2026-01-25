@@ -2406,11 +2406,6 @@ function formatDuration(hours) {
  * 打开任务关联设置浮层
  */
 async function openTaskDependencyModal() {
-    // 确保有全局的 projects 数据
-    if (!projects || projects.length === 0) {
-        projects = await getProjects();
-    }
-    
     // 保存当前编辑的任务信息
     const taskNameField = document.getElementById('modalTaskName');
     if (taskNameField && taskNameField.dataset.taskId) {
@@ -2421,9 +2416,12 @@ async function openTaskDependencyModal() {
         return;
     }
     
+    // 获取最新的项目数据
+    const projectsData = await getProjects();
+    
     // 获取当前任务已有的前置任务
     if (currentEditingTaskId && currentEditingTaskProjectId) {
-        const project = projects.find(p => p.id === currentEditingTaskProjectId);
+        const project = projectsData.find(p => p.id === currentEditingTaskProjectId);
         if (project) {
             const task = project.tasks.find(t => t.id === currentEditingTaskId);
             if (task && task.prerequisites) {
@@ -2437,7 +2435,7 @@ async function openTaskDependencyModal() {
     }
     
     // 更新显示框
-    updatePrerequisitesDisplay();
+    await updatePrerequisitesDisplay();
     
     // 显示任务关联设置浮层
     document.getElementById('taskDependencyModal').style.display = 'flex';
@@ -2453,13 +2451,15 @@ function closeTaskDependencyModal() {
 /**
  * 打开前置任务选择器
  */
-function openPrerequisiteSelector() {
+async function openPrerequisiteSelector() {
     if (!currentEditingTaskProjectId) {
         alert('无法获取项目信息');
         return;
     }
     
-    const project = projects.find(p => p.id === currentEditingTaskProjectId);
+    // 获取最新的项目数据
+    const projectsData = await getProjects();
+    const project = projectsData.find(p => p.id === currentEditingTaskProjectId);
     if (!project) {
         alert('项目不存在');
         return;
@@ -2528,7 +2528,7 @@ function confirmPrerequisiteSelection() {
 /**
  * 更新已选择的前置任务显示框
  */
-function updatePrerequisitesDisplay() {
+async function updatePrerequisitesDisplay() {
     const displayContainer = document.getElementById('selectedPrerequisitesDisplay');
     if (!displayContainer) {
         console.error('selectedPrerequisitesDisplay not found');
@@ -2540,14 +2540,15 @@ function updatePrerequisitesDisplay() {
         return;
     }
     
-    // 确保 projects 数据存在
-    if (!projects || projects.length === 0) {
+    // 获取最新的项目数据
+    const projectsData = await getProjects();
+    if (!projectsData || projectsData.length === 0) {
         displayContainer.innerHTML = '<span class="empty-hint">加载中...</span>';
         return;
     }
     
     // 获取任务信息
-    const project = projects.find(p => p.id === currentEditingTaskProjectId);
+    const project = projectsData.find(p => p.id === currentEditingTaskProjectId);
     if (!project) {
         console.error('Project not found:', currentEditingTaskProjectId);
         displayContainer.innerHTML = '<span class="empty-hint">项目不存在</span>';
