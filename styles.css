@@ -613,6 +613,77 @@ input[readonly] {
 }
 
 /* ============================================================
+   赏金选择器样式
+   ============================================================ */
+
+.bounty-picker-container {
+    max-width: 500px;
+}
+
+/* 赏金选项容器 */
+.bounty-options {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg);
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-base);
+}
+
+/* 赏金选项按钮 */
+.bounty-option {
+    padding: var(--spacing-lg);
+    font-size: var(--font-size-large);
+    font-weight: 600;
+    background: var(--bg-page);
+    color: var(--text-color);
+    border: var(--border-width-task) solid var(--border-module);
+    border-radius: var(--radius-base);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: center;
+}
+
+.bounty-option:hover {
+    background: rgba(254, 165, 0, 0.08);
+    transform: translateY(-2px);
+    border-color: var(--color-cyan);
+}
+
+.bounty-option.selected {
+    background: #ff4444;
+    color: #ffffff;
+    border: 2px solid #ff4444;
+    font-weight: 600;
+    box-shadow: 0 0 8px rgba(255, 68, 68, 0.4);
+}
+
+/* 自定义赏金行 */
+.bounty-custom-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+}
+
+.bounty-custom-row input {
+    padding: var(--spacing-lg) var(--spacing-xl);
+    font-size: var(--font-size-large);
+    font-weight: 600;
+    background: var(--bg-page);
+    color: var(--text-primary);
+    border: var(--border-width-module) solid var(--border-module);
+    border-radius: var(--radius-base);
+    outline: none;
+}
+
+.bounty-custom-row .btn-primary {
+    padding: var(--spacing-lg) var(--spacing-xl);
+    font-size: var(--font-size-large);
+    font-weight: 600;
+}
+
+/* ============================================================
    日期时间表格选择器样式
    ============================================================ */
 

@@ -1460,6 +1460,82 @@ function closeDurationPicker() {
     selectedDurationMinute = 0;
 }
 
+// ============================================================
+// 赏金选择器
+// ============================================================
+
+let selectedBounty = 0;  // 当前选中的赏金
+
+/**
+ * 打开赏金选择器
+ */
+function openBountyPicker() {
+    // 读取当前赏金值
+    const bountyField = document.getElementById('modalTaskBounty');
+    selectedBounty = parseFloat(bountyField.value) || 0;
+    
+    // 渲染赏金选项
+    renderBountyOptions();
+    
+    // 显示赏金选择器
+    document.getElementById('bountyPickerModal').style.display = 'flex';
+}
+
+/**
+ * 关闭赏金选择器
+ */
+function closeBountyPicker() {
+    document.getElementById('bountyPickerModal').style.display = 'none';
+}
+
+/**
+ * 渲染赏金选项
+ */
+function renderBountyOptions() {
+    const container = document.getElementById('bountyOptions');
+    const bountyValues = [50, 100, 150, 200, 250, 300, 450, 500];
+    
+    container.innerHTML = bountyValues.map(value => `
+        <div class="bounty-option ${selectedBounty === value ? 'selected' : ''}" 
+             onclick="selectBounty(${value})">
+            ${value}
+        </div>
+    `).join('');
+}
+
+/**
+ * 选择赏金
+ * @param {number} value - 赏金值
+ */
+function selectBounty(value) {
+    selectedBounty = value;
+    renderBountyOptions();
+}
+
+/**
+ * 确认选择赏金
+ */
+function confirmBountyPicker() {
+    // 检查是否使用自定义赏金
+    const customInput = document.getElementById('customBountyInput');
+    if (customInput.value) {
+        selectedBounty = parseFloat(customInput.value) || 0;
+    }
+    
+    // 设置赏金值到输入框
+    const bountyField = document.getElementById('modalTaskBounty');
+    bountyField.value = selectedBounty;
+    
+    // 触发自动保存
+    autoSaveTask();
+    
+    // 清空自定义输入框
+    customInput.value = '';
+    
+    // 关闭选择器
+    closeBountyPicker();
+}
+
 /**
  * 为项目表单绑定实时保存监听器
  */

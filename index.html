@@ -161,7 +161,7 @@
 
                     <div class="form-item">
                         <label for="modalTaskBounty">赏金</label>
-                        <input type="number" id="modalTaskBounty" step="0.01" min="0" placeholder="请输入任务赏金金额">
+                        <input type="text" id="modalTaskBounty" readonly onclick="openBountyPicker()" placeholder="点击选择赏金">
                     </div>
 
                     <!-- 第二行：预计（开始、耗时、结束） -->
@@ -332,6 +332,34 @@
             <!-- 底部：取消按钮 -->
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="closeDurationPicker()">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 赏金选择器浮层 ========== -->
+    <div id="bountyPickerModal" class="modal-overlay" style="display: none;">
+        <div class="modal-container bounty-picker-container">
+            <!-- 头部：标题 -->
+            <div class="modal-header">
+                <h3 class="modal-title">选择赏金</h3>
+            </div>
+
+            <!-- 主体：赏金选项 -->
+            <div class="modal-body">
+                <div class="bounty-options" id="bountyOptions">
+                    <!-- 动态生成赏金选项 -->
+                </div>
+                
+                <!-- 底部输入行 -->
+                <div class="bounty-custom-row">
+                    <input type="number" id="customBountyInput" placeholder="自定义赏金" min="0" step="10">
+                    <button class="btn-primary" onclick="confirmBountyPicker()">确认</button>
+                </div>
+            </div>
+
+            <!-- 底部：取消按钮 -->
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeBountyPicker()">取消</button>
             </div>
         </div>
     </div>
