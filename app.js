@@ -2405,16 +2405,20 @@ function formatDuration(hours) {
 /**
  * 打开任务关联设置浮层
  */
-function openTaskDependencyModal() {
-    // 获取当前任务的前置任务列表（从全局变量或当前任务数据）
-    const modal = document.getElementById('taskModal');
-    if (!modal) return;
+async function openTaskDependencyModal() {
+    // 确保有全局的 projects 数据
+    if (!projects || projects.length === 0) {
+        projects = await getProjects();
+    }
     
     // 保存当前编辑的任务信息
     const taskNameField = document.getElementById('modalTaskName');
     if (taskNameField && taskNameField.dataset.taskId) {
         currentEditingTaskId = parseInt(taskNameField.dataset.taskId);
         currentEditingTaskProjectId = parseInt(taskNameField.dataset.projectId);
+    } else {
+        alert('无法获取任务信息，请重新打开任务编辑页面');
+        return;
     }
     
     // 获取当前任务已有的前置任务
@@ -2526,20 +2530,38 @@ function confirmPrerequisiteSelection() {
  */
 function updatePrerequisitesDisplay() {
     const displayContainer = document.getElementById('selectedPrerequisitesDisplay');
-    if (!displayContainer) return;
+    if (!displayContainer) {
+        console.error('selectedPrerequisitesDisplay not found');
+        return;
+    }
     
-    if (selectedPrerequisites.length === 0) {
+    if (!selectedPrerequisites || selectedPrerequisites.length === 0) {
         displayContainer.innerHTML = '<span class="empty-hint">暂无前置任务</span>';
+        return;
+    }
+    
+    // 确保 projects 数据存在
+    if (!projects || projects.length === 0) {
+        displayContainer.innerHTML = '<span class="empty-hint">加载中...</span>';
         return;
     }
     
     // 获取任务信息
     const project = projects.find(p => p.id === currentEditingTaskProjectId);
-    if (!project) return;
+    if (!project) {
+        console.error('Project not found:', currentEditingTaskProjectId);
+        displayContainer.innerHTML = '<span class="empty-hint">项目不存在</span>';
+        return;
+    }
     
     const prerequisiteTasks = selectedPrerequisites
         .map(id => project.tasks.find(t => t.id === id))
         .filter(t => t); // 过滤掉不存在的任务
+    
+    if (prerequisiteTasks.length === 0) {
+        displayContainer.innerHTML = '<span class="empty-hint">前置任务不存在</span>';
+        return;
+    }
     
     displayContainer.innerHTML = prerequisiteTasks.map(task => `
         <div class="prerequisite-tag">
