@@ -956,7 +956,11 @@ async function openEditTaskModal(projectId, taskId) {
     actualDurationField.setAttribute('data-hours', actualDuration);
     actualDurationField.value = actualDuration ? formatDuration(actualDuration) : '';
     
-    document.getElementById('modalTaskPriority').value = task.priority || '中';
+    // 设置优先级（兼容新旧格式）
+    const priorityValue = task.priority || '{"importance": 0, "urgency": 0}';
+    document.getElementById('modalTaskPriority').value = priorityValue;
+    updatePriorityButtonDisplay();
+    
     document.getElementById('modalTaskCategory').value = task.category || '工作';
     document.getElementById('modalTaskBounty').value = task.bounty || 0;
     document.getElementById('modalTaskCompleted').value = task.completed ? 'true' : 'false';
@@ -2878,6 +2882,293 @@ function getRelatedNodeIds(nodeId) {
     });
     
     return related;
+}
+
+// ============================================================
+//  重要度/紧急度矩阵选择器
+// ============================================================
+
+let selectedImportance = 0;  // -1 到 1
+let selectedUrgency = 0;     // -1 到 1
+
+/**
+ * 打开重要度/紧急度矩阵选择器
+ */
+function openPriorityMatrix() {
+    // 读取当前值
+    const priorityField = document.getElementById('modalTaskPriority');
+    if (priorityField && priorityField.value) {
+        try {
+            const data = JSON.parse(priorityField.value);
+            selectedImportance = data.importance || 0;
+            selectedUrgency = data.urgency || 0;
+        } catch (e) {
+            // 兼容旧数据格式（低/中/高）
+            const oldValue = priorityField.value;
+            if (oldValue === '低') {
+                selectedImportance = -0.5;
+                selectedUrgency = -0.5;
+            } else if (oldValue === '中') {
+                selectedImportance = 0;
+                selectedUrgency = 0;
+            } else if (oldValue === '高') {
+                selectedImportance = 0.5;
+                selectedUrgency = 0.5;
+            }
+        }
+    }
+    
+    // 渲染坐标系
+    renderPriorityMatrix();
+    
+    // 显示浮层
+    document.getElementById('priorityMatrixModal').style.display = 'flex';
+}
+
+/**
+ * 关闭重要度/紧急度矩阵选择器
+ */
+function closePriorityMatrix() {
+    document.getElementById('priorityMatrixModal').style.display = 'none';
+}
+
+/**
+ * 渲染重要度/紧急度矩阵
+ */
+function renderPriorityMatrix() {
+    const svg = d3.select('#priorityMatrixSvg');
+    svg.selectAll('*').remove();
+    
+    const container = document.querySelector('.priority-matrix-container');
+    const width = container.clientWidth || 500;
+    const height = container.clientHeight || 500;
+    const padding = 50;
+    const size = Math.min(width, height) - padding * 2;
+    
+    svg.attr('width', width).attr('height', height);
+    
+    // 坐标原点在中心
+    const originX = width / 2;
+    const originY = height / 2;
+    const scale = size / 2;  // -1到1映射到坐标系
+    
+    // 绘制网格线
+    const gridLines = [-0.5, 0.5];
+    gridLines.forEach(val => {
+        // 垂直线
+        svg.append('line')
+            .attr('class', 'priority-grid')
+            .attr('x1', originX + val * scale)
+            .attr('y1', originY - scale)
+            .attr('x2', originX + val * scale)
+            .attr('y2', originY + scale);
+        
+        // 水平线
+        svg.append('line')
+            .attr('class', 'priority-grid')
+            .attr('x1', originX - scale)
+            .attr('y1', originY - val * scale)
+            .attr('x2', originX + scale)
+            .attr('y2', originY - val * scale);
+    });
+    
+    // 绘制X轴（紧急度）
+    svg.append('line')
+        .attr('class', 'priority-axis')
+        .attr('x1', originX - scale)
+        .attr('y1', originY)
+        .attr('x2', originX + scale)
+        .attr('y2', originY);
+    
+    // X轴箭头
+    svg.append('polygon')
+        .attr('class', 'priority-axis-arrow')
+        .attr('points', `${originX + scale},${originY} ${originX + scale - 8},${originY - 4} ${originX + scale - 8},${originY + 4}`);
+    
+    // 绘制Y轴（重要度）
+    svg.append('line')
+        .attr('class', 'priority-axis')
+        .attr('x1', originX)
+        .attr('y1', originY - scale)
+        .attr('x2', originX)
+        .attr('y2', originY + scale);
+    
+    // Y轴箭头
+    svg.append('polygon')
+        .attr('class', 'priority-axis-arrow')
+        .attr('points', `${originX},${originY - scale} ${originX - 4},${originY - scale + 8} ${originX + 4},${originY - scale + 8}`);
+    
+    // 添加轴标签
+    svg.append('text')
+        .attr('class', 'priority-label')
+        .attr('x', originX + scale + 15)
+        .attr('y', originY + 5)
+        .text('紧急→');
+    
+    svg.append('text')
+        .attr('class', 'priority-label')
+        .attr('x', originX - 5)
+        .attr('y', originY - scale - 10)
+        .attr('text-anchor', 'middle')
+        .text('↑重要');
+    
+    // 添加刻度标签
+    svg.append('text')
+        .attr('class', 'priority-label')
+        .attr('x', originX - scale - 10)
+        .attr('y', originY + 5)
+        .attr('text-anchor', 'end')
+        .text('-1');
+    
+    svg.append('text')
+        .attr('class', 'priority-label')
+        .attr('x', originX + scale + 10)
+        .attr('y', originY + 5)
+        .text('1');
+    
+    svg.append('text')
+        .attr('class', 'priority-label')
+        .attr('x', originX - 5)
+        .attr('y', originY + scale + 15)
+        .attr('text-anchor', 'middle')
+        .text('-1');
+    
+    svg.append('text')
+        .attr('class', 'priority-label')
+        .attr('x', originX - 5)
+        .attr('y', originY - scale + 5)
+        .attr('text-anchor', 'middle')
+        .text('1');
+    
+    // 绘制当前选中的点
+    updatePriorityPoint(originX, originY, scale);
+    
+    // 点击坐标系选择位置
+    svg.append('rect')
+        .attr('x', originX - scale)
+        .attr('y', originY - scale)
+        .attr('width', scale * 2)
+        .attr('height', scale * 2)
+        .attr('fill', 'transparent')
+        .on('click', function(event) {
+            const [mouseX, mouseY] = d3.pointer(event);
+            
+            // 转换为-1到1的坐标
+            selectedUrgency = Math.max(-1, Math.min(1, (mouseX - originX) / scale));
+            selectedImportance = Math.max(-1, Math.min(1, (originY - mouseY) / scale));
+            
+            // 保留2位小数
+            selectedUrgency = Math.round(selectedUrgency * 100) / 100;
+            selectedImportance = Math.round(selectedImportance * 100) / 100;
+            
+            // 更新显示
+            updatePriorityPoint(originX, originY, scale);
+        });
+}
+
+/**
+ * 更新选中点的显示
+ */
+function updatePriorityPoint(originX, originY, scale) {
+    const svg = d3.select('#priorityMatrixSvg');
+    
+    // 移除旧的点
+    svg.selectAll('.priority-point').remove();
+    svg.selectAll('.priority-point-label').remove();
+    
+    // 计算点的位置
+    const pointX = originX + selectedUrgency * scale;
+    const pointY = originY - selectedImportance * scale;
+    
+    // 绘制新的点
+    svg.append('circle')
+        .attr('class', 'priority-point')
+        .attr('cx', pointX)
+        .attr('cy', pointY)
+        .attr('r', 8);
+    
+    // 绘制点上的文字（分两行）
+    const importanceLabel = selectedImportance >= 0 ? `重要 ${selectedImportance.toFixed(1)}` : `不重要 ${Math.abs(selectedImportance).toFixed(1)}`;
+    const urgencyLabel = selectedUrgency >= 0 ? `紧急 ${selectedUrgency.toFixed(1)}` : `不紧急 ${Math.abs(selectedUrgency).toFixed(1)}`;
+    
+    svg.append('text')
+        .attr('class', 'priority-point-label')
+        .attr('x', pointX)
+        .attr('y', pointY - 15)
+        .text(importanceLabel);
+    
+    svg.append('text')
+        .attr('class', 'priority-point-label')
+        .attr('x', pointX)
+        .attr('y', pointY - 3)
+        .text(urgencyLabel);
+    
+    // 更新信息框
+    updatePriorityInfoBox();
+}
+
+/**
+ * 更新信息显示框
+ */
+function updatePriorityInfoBox() {
+    const infoBox = document.getElementById('priorityInfoBox');
+    
+    const importanceLabel = selectedImportance >= 0 ? `重要 ${selectedImportance.toFixed(2)}` : `不重要 ${Math.abs(selectedImportance).toFixed(2)}`;
+    const urgencyLabel = selectedUrgency >= 0 ? `紧急 ${selectedUrgency.toFixed(2)}` : `不紧急 ${Math.abs(selectedUrgency).toFixed(2)}`;
+    
+    infoBox.innerHTML = `
+        <div style="line-height: 1.8;">
+            <div>${importanceLabel}</div>
+            <div>${urgencyLabel}</div>
+        </div>
+    `;
+}
+
+/**
+ * 确认选择
+ */
+function confirmPriorityMatrix() {
+    // 保存到隐藏字段
+    const priorityField = document.getElementById('modalTaskPriority');
+    const data = {
+        importance: selectedImportance,
+        urgency: selectedUrgency
+    };
+    priorityField.value = JSON.stringify(data);
+    
+    // 更新按钮显示
+    updatePriorityButtonDisplay();
+    
+    // 触发自动保存（如果在编辑模式）
+    if (currentEditingTask.taskId) {
+        autoSaveTask();
+    }
+    
+    // 关闭浮层
+    closePriorityMatrix();
+}
+
+/**
+ * 更新优先级按钮显示文字
+ */
+function updatePriorityButtonDisplay() {
+    const priorityField = document.getElementById('modalTaskPriority');
+    const displaySpan = document.getElementById('priorityMatrixDisplay');
+    
+    if (!priorityField || !displaySpan) return;
+    
+    try {
+        const data = JSON.parse(priorityField.value);
+        const importance = data.importance || 0;
+        const urgency = data.urgency || 0;
+        
+        const importanceLabel = importance >= 0 ? `重要${importance.toFixed(1)}` : `不重要${Math.abs(importance).toFixed(1)}`;
+        const urgencyLabel = urgency >= 0 ? `紧急${urgency.toFixed(1)}` : `不紧急${Math.abs(urgency).toFixed(1)}`;
+        
+        displaySpan.textContent = `${importanceLabel} / ${urgencyLabel}`;
+    } catch (e) {
+        displaySpan.textContent = priorityField.value || '选择优先级';
+    }
 }
 
 

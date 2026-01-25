@@ -945,3 +945,99 @@ input[readonly] {
     font-size: var(--font-size-base);
 }
 
+/* ============================================================
+   重要度/紧急度矩阵选择器样式
+   ============================================================ */
+
+.priority-matrix-container {
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
+    aspect-ratio: 1;
+    background: rgba(0, 0, 0, 0.3);
+    border: var(--border-width-task) solid var(--border-module);
+    border-radius: var(--radius-base);
+    position: relative;
+}
+
+.priority-matrix-svg {
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+}
+
+/* 坐标轴 */
+.priority-axis {
+    stroke: var(--text-color);
+    stroke-width: 2px;
+}
+
+/* 坐标轴箭头 */
+.priority-axis-arrow {
+    fill: var(--text-color);
+}
+
+/* 网格线 */
+.priority-grid {
+    stroke: rgba(254, 165, 0, 0.15);
+    stroke-width: 1px;
+    stroke-dasharray: 4 4;
+}
+
+/* 标签文字 */
+.priority-label {
+    fill: var(--text-color);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* 选中的点 */
+.priority-point {
+    fill: var(--text-color);
+    stroke: var(--color-cyan);
+    stroke-width: 2px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.priority-point:hover {
+    fill: var(--color-cyan);
+    filter: drop-shadow(0 0 8px rgba(102, 255, 204, 0.6));
+}
+
+/* 点上的文字 */
+.priority-point-label {
+    fill: var(--text-color);
+    font-size: 11px;
+    text-anchor: middle;
+    pointer-events: none;
+    text-shadow: 0 0 3px rgba(0, 0, 0, 0.8);
+}
+
+/* 信息显示框 */
+.priority-info-box {
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: rgba(254, 165, 0, 0.08);
+    border: var(--border-width-task) solid var(--border-module);
+    border-radius: var(--radius-base);
+    text-align: center;
+    font-size: var(--font-size-base);
+    color: var(--text-color);
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 优先级按钮显示 */
+#priorityMatrixButton {
+    width: 100%;
+    text-align: left;
+    padding: 8px 12px;
+}
+
+#priorityMatrixDisplay {
+    color: var(--text-color);
+}
+

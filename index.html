@@ -151,12 +151,12 @@
                     </div>
 
                     <div class="form-item">
-                        <label for="modalTaskPriority">重要度</label>
-                        <select id="modalTaskPriority">
-                            <option value="低">低</option>
-                            <option value="中" selected>中</option>
-                            <option value="高">高</option>
-                        </select>
+                        <label>重要度/紧急度</label>
+                        <button class="btn-secondary" onclick="openPriorityMatrix()" id="priorityMatrixButton">
+                            <span id="priorityMatrixDisplay">选择优先级</span>
+                        </button>
+                        <!-- 隐藏字段存储数据 -->
+                        <input type="hidden" id="modalTaskPriority" value="{\"importance\": 0, \"urgency\": 0}">
                     </div>
 
                     <div class="form-item">
@@ -438,6 +438,36 @@
             <!-- 右下角：确认按钮 -->
             <div class="modal-footer">
                 <button class="btn-primary" onclick="confirmPrerequisiteSelection()">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 重要度/紧急度矩阵选择器 ========== -->
+    <div id="priorityMatrixModal" class="modal-overlay" style="display: none;">
+        <div class="modal-container">
+            <!-- 左上角：返回按钮 -->
+            <div class="modal-header">
+                <button class="btn-secondary" onclick="closePriorityMatrix()">返回</button>
+            </div>
+
+            <!-- 主体：直角坐标系 -->
+            <div class="modal-body">
+                <h2 class="modal-title">选择重要度/紧急度</h2>
+                
+                <!-- 坐标系容器 -->
+                <div class="priority-matrix-container">
+                    <svg id="priorityMatrixSvg" class="priority-matrix-svg"></svg>
+                </div>
+                
+                <!-- 信息显示框 -->
+                <div class="priority-info-box" id="priorityInfoBox">
+                    <span>点击坐标系选择位置</span>
+                </div>
+            </div>
+
+            <!-- 右下角：确认按钮 -->
+            <div class="modal-footer">
+                <button class="btn-primary" onclick="confirmPriorityMatrix()">确认</button>
             </div>
         </div>
     </div>
