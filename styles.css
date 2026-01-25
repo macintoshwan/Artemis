@@ -497,7 +497,8 @@ button:hover {
 .form-item input[type="text"],
 .form-item input[type="date"],
 .form-item input[type="number"],
-.form-item select {
+.form-item select,
+.form-item button {
     padding: 12px var(--spacing-md);
     border: var(--border-width-module) solid var(--border-module);
     border-radius: var(--radius-base);
@@ -507,6 +508,13 @@ button:hover {
     width: 100%;
     background: var(--bg-page);
     color: var(--text-primary);
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.form-item button:hover {
+    background: rgba(254, 165, 0, 0.08);
+    border-color: var(--color-cyan);
 }
 
 /* 输入框验证不通过时的红色高亮 */
