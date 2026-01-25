@@ -2761,6 +2761,12 @@ function renderTaskGraph(tasks) {
     }).on('mouseleave', function() {
         link.classed('highlighted', false);
     });
+    
+    // 双击节点打开任务编辑页面
+    node.on('dblclick', function(event, d) {
+        event.stopPropagation();  // 阻止事件冒泡
+        openEditTaskModal(currentDetailProjectId, d.id);
+    });
 }
 
 /**
