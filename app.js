@@ -957,25 +957,16 @@ async function openEditTaskModal(projectId, taskId) {
     actualDurationField.value = actualDuration ? formatDuration(actualDuration) : '';
     
     // 设置优先级（兼容新旧格式）
-    let priorityValue = '{“importance": 0, "urgency": 0}';
-    if (task.priority) {
-        if (typeof task.priority === 'string') {
-            // 已经JSON字符串
-            if (task.priority.startsWith('{')) {
-                priorityValue = task.priority;
-            } else {
-                // 旧格式（低/中/高），转换为JSON
-                const priorityMap = {
-                    '低': '{"importance": -0.5, "urgency": -0.5}',
-                    '中': '{"importance": 0, "urgency": 0}',
-                    '高': '{"importance": 0.5, "urgency": 0.5}'
-                };
-                priorityValue = priorityMap[task.priority] || '{"importance": 0, "urgency": 0}';
-            }
-        } else if (typeof task.priority === 'object') {
-            // 已经是JSON对象，转换为JSON字符串
-            priorityValue = JSON.stringify(task.priority);
-        }
+    let priorityValue;
+    if (typeof task.priority === 'object' && task.priority !== null) {
+        // 如果是对象，转换为 JSON 字符串
+        priorityValue = JSON.stringify(task.priority);
+    } else if (typeof task.priority === 'string') {
+        // 如果是字符串，直接使用
+        priorityValue = task.priority || '{"importance": 0, "urgency": 0}';
+    } else {
+        // 默认值
+        priorityValue = '{"importance": 0, "urgency": 0}';
     }
     document.getElementById('modalTaskPriority').value = priorityValue;
     updatePriorityButtonDisplay();
@@ -3225,36 +3216,23 @@ function updatePriorityButtonDisplay() {
     if (!priorityField || !displaySpan) return;
     
     try {
-        let data = priorityField.value;
+        let data;
+        const fieldValue = priorityField.value;
         
-        // 处理不同的数据类型
-        if (typeof data === 'string') {
-            // 是JSON字符串
-            if (data.startsWith('{')) {
-                data = JSON.parse(data);
-            } else {
-                // 旧格式（低/中/高）
-                const priorityMap = {
-                    '低': { importance: -0.5, urgency: -0.5 },
-                    '中': { importance: 0, urgency: 0 },
-                    '高': { importance: 0.5, urgency: 0.5 }
-                };
-                data = priorityMap[data] || { importance: 0, urgency: 0 };
-            }
-        } else if (typeof data === 'object') {
-            // 已经是JSON对象，直接使用
-            // data = data
+        // 处理对象类型和字符串类型
+        if (typeof fieldValue === 'object') {
+            data = fieldValue;
         } else {
-            data = { importance: 0, urgency: 0 };
+            data = JSON.parse(fieldValue);
         }
         
         const importance = data.importance || 0;
         const urgency = data.urgency || 0;
         
-        const importanceLabel = importance >= 0 ? `${importance.toFixed(1)}` : `-${Math.abs(importance).toFixed(1)}`;
-        const urgencyLabel = urgency >= 0 ? `${urgency.toFixed(1)}` : `-${Math.abs(urgency).toFixed(1)}`;
+        const importanceLabel = importance >= 0 ? `重要${importance.toFixed(1)}` : `不重要${Math.abs(importance).toFixed(1)}`;
+        const urgencyLabel = urgency >= 0 ? `紧急${urgency.toFixed(1)}` : `不紧急${Math.abs(urgency).toFixed(1)}`;
         
-        displaySpan.textContent = `重要${importanceLabel} / 紧急${urgencyLabel}`;
+        displaySpan.textContent = `${importanceLabel} / ${urgencyLabel}`;
     } catch (e) {
         console.error('Error parsing priority:', e);
         displaySpan.textContent = '选择优先级';
