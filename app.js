@@ -581,6 +581,9 @@ async function renderProjectDetailContent() {
             `).join('');
     }
 
+    // 渲染任务关系图
+    renderTaskGraph(project.tasks);
+
     // 底部按钮绑定
     const editBtn = document.getElementById('detailEditProjectBtn');
     if (editBtn) editBtn.onclick = () => openEditProjectModal(project.id);
@@ -2617,6 +2620,258 @@ async function confirmTaskDependency() {
         console.error('Error in confirmTaskDependency:', err);
         alert('保存失败，请重试');
     }
+}
+
+// ============================================================
+//  任务关系图（力导向图）
+// ============================================================
+
+let taskGraphSimulation = null;  // D3 力模拟对象
+
+/**
+ * 渲染任务关系图
+ * @param {Array} tasks - 任务列表
+ */
+function renderTaskGraph(tasks) {
+    const container = document.getElementById('taskGraphContainer');
+    const svg = d3.select('#taskGraphSvg');
+    
+    // 清空现有内容
+    svg.selectAll('*').remove();
+    
+    // 如果没有任务，显示空提示
+    if (!tasks || tasks.length === 0) {
+        container.innerHTML = '<div class="task-graph-empty">暂无任务</div>';
+        return;
+    }
+    
+    // 恢复SVG
+    if (!document.getElementById('taskGraphSvg')) {
+        container.innerHTML = '<svg id="taskGraphSvg"></svg>';
+    }
+    
+    // 获取容器尺寸
+    const width = container.clientWidth || 600;
+    const height = container.clientHeight || 300;
+    
+    // 设置SVG尺寸
+    svg.attr('width', width).attr('height', height);
+    
+    // 构建节点数据
+    const nodes = tasks.map(task => ({
+        id: task.id,
+        name: task.name,
+        completed: task.completed,
+        prerequisites: task.prerequisites || []
+    }));
+    
+    // 构建连接数据（从前置任务指向当前任务）
+    const links = [];
+    tasks.forEach(task => {
+        if (task.prerequisites && task.prerequisites.length > 0) {
+            task.prerequisites.forEach(prereqId => {
+                // 确保前置任务存在于当前任务列表中
+                if (nodes.find(n => n.id === prereqId)) {
+                    links.push({
+                        source: prereqId,
+                        target: task.id
+                    });
+                }
+            });
+        }
+    });
+    
+    // 创建箭头标记
+    svg.append('defs').append('marker')
+        .attr('id', 'arrowhead')
+        .attr('viewBox', '0 -5 10 10')
+        .attr('refX', 25)
+        .attr('refY', 0)
+        .attr('markerWidth', 6)
+        .attr('markerHeight', 6)
+        .attr('orient', 'auto')
+        .append('path')
+        .attr('d', 'M0,-5L10,0L0,5')
+        .attr('fill', 'rgba(102, 255, 204, 0.6)');
+    
+    // 创建力模拟
+    taskGraphSimulation = d3.forceSimulation(nodes)
+        .force('link', d3.forceLink(links).id(d => d.id).distance(80).strength(0.5))
+        .force('charge', d3.forceManyBody().strength(-200))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('collision', d3.forceCollide().radius(35));
+    
+    // 绘制连接线
+    const link = svg.append('g')
+        .attr('class', 'links')
+        .selectAll('line')
+        .data(links)
+        .enter()
+        .append('line')
+        .attr('class', 'task-link')
+        .attr('marker-end', 'url(#arrowhead)');
+    
+    // 创建节点组
+    const node = svg.append('g')
+        .attr('class', 'nodes')
+        .selectAll('g')
+        .data(nodes)
+        .enter()
+        .append('g')
+        .attr('class', d => `task-node ${d.completed ? 'completed' : ''}`)
+        .call(d3.drag()
+            .on('start', dragStarted)
+            .on('drag', dragged)
+            .on('end', dragEnded));
+    
+    // 添加圆形节点
+    node.append('circle')
+        .attr('r', 20);
+    
+    // 添加任务名称
+    node.append('text')
+        .attr('dy', 4)
+        .text(d => truncateName(d.name, 6));
+    
+    // 添加悬停提示
+    node.append('title')
+        .text(d => d.name);
+    
+    // 力模拟更新
+    taskGraphSimulation.on('tick', () => {
+        // 限制节点在边界内
+        nodes.forEach(d => {
+            d.x = Math.max(25, Math.min(width - 25, d.x));
+            d.y = Math.max(25, Math.min(height - 25, d.y));
+        });
+        
+        link
+            .attr('x1', d => d.source.x)
+            .attr('y1', d => d.source.y)
+            .attr('x2', d => d.target.x)
+            .attr('y2', d => d.target.y);
+        
+        node.attr('transform', d => `translate(${d.x},${d.y})`);
+    });
+    
+    // 鼠标悬停效果：高亮相关连接
+    node.on('mouseenter', function(event, d) {
+        // 高亮与此节点相关的连接线
+        link.classed('highlighted', l => l.source.id === d.id || l.target.id === d.id);
+    }).on('mouseleave', function() {
+        link.classed('highlighted', false);
+    });
+}
+
+/**
+ * 截断名称
+ * @param {string} name 
+ * @param {number} maxLen 
+ */
+function truncateName(name, maxLen) {
+    if (!name) return '';
+    return name.length > maxLen ? name.substring(0, maxLen) + '..' : name;
+}
+
+/**
+ * 拖拽开始
+ */
+function dragStarted(event, d) {
+    if (!event.active) taskGraphSimulation.alphaTarget(0.3).restart();
+    d.fx = d.x;
+    d.fy = d.y;
+    
+    // 添加拖拽样式
+    d3.select(this).classed('dragging', true);
+    
+    // 获取关联的节点ID
+    const relatedIds = getRelatedNodeIds(d.id);
+    
+    // 存储关联节点的初始偏移量
+    d._relatedOffsets = {};
+    const nodes = taskGraphSimulation.nodes();
+    relatedIds.forEach(id => {
+        const relatedNode = nodes.find(n => n.id === id);
+        if (relatedNode && relatedNode.id !== d.id) {
+            d._relatedOffsets[id] = {
+                dx: relatedNode.x - d.x,
+                dy: relatedNode.y - d.y
+            };
+        }
+    });
+}
+
+/**
+ * 拖拽中
+ */
+function dragged(event, d) {
+    d.fx = event.x;
+    d.fy = event.y;
+    
+    // 拖动关联的节点（带弹性效果）
+    const nodes = taskGraphSimulation.nodes();
+    if (d._relatedOffsets) {
+        Object.entries(d._relatedOffsets).forEach(([id, offset]) => {
+            const relatedNode = nodes.find(n => n.id === parseInt(id));
+            if (relatedNode) {
+                // 使用弹性系数让关联节点跟随但有延迟
+                const elasticity = 0.3;
+                const targetX = event.x + offset.dx;
+                const targetY = event.y + offset.dy;
+                relatedNode.fx = relatedNode.x + (targetX - relatedNode.x) * elasticity;
+                relatedNode.fy = relatedNode.y + (targetY - relatedNode.y) * elasticity;
+            }
+        });
+    }
+}
+
+/**
+ * 拖拽结束
+ */
+function dragEnded(event, d) {
+    if (!event.active) taskGraphSimulation.alphaTarget(0);
+    d.fx = null;
+    d.fy = null;
+    
+    // 移除拖拽样式
+    d3.select(this).classed('dragging', false);
+    
+    // 释放关联节点的固定位置
+    const nodes = taskGraphSimulation.nodes();
+    if (d._relatedOffsets) {
+        Object.keys(d._relatedOffsets).forEach(id => {
+            const relatedNode = nodes.find(n => n.id === parseInt(id));
+            if (relatedNode) {
+                relatedNode.fx = null;
+                relatedNode.fy = null;
+            }
+        });
+        delete d._relatedOffsets;
+    }
+}
+
+/**
+ * 获取与指定节点关联的所有节点ID（包括前置和后续任务）
+ * @param {number} nodeId 
+ * @returns {Set} 关联节点ID集合
+ */
+function getRelatedNodeIds(nodeId) {
+    const nodes = taskGraphSimulation.nodes();
+    const related = new Set();
+    
+    // 查找所有直接关联的节点
+    nodes.forEach(node => {
+        // 当前节点的前置任务
+        if (node.id === nodeId && node.prerequisites) {
+            node.prerequisites.forEach(id => related.add(id));
+        }
+        // 以当前节点为前置任务的节点
+        if (node.prerequisites && node.prerequisites.includes(nodeId)) {
+            related.add(node.id);
+        }
+    });
+    
+    return related;
 }
 
 

@@ -272,6 +272,15 @@
             <div class="modal-body">
                 <h2 id="projectDetailTitle" class="modal-title">项目详情</h2>
                 <div id="projectDetailMeta" class="project-detail-meta" style="margin-bottom: 16px;"></div>
+                
+                <!-- 任务关系图 -->
+                <div class="task-graph-container">
+                    <h3 class="task-graph-title">任务关系图</h3>
+                    <div id="taskGraphContainer" class="task-graph">
+                        <svg id="taskGraphSvg"></svg>
+                    </div>
+                </div>
+                
                 <div id="projectDetailTasks" class="task-list"></div>
             </div>
 
@@ -432,6 +441,9 @@
             </div>
         </div>
     </div>
+
+    <!-- 引入 D3.js 库（用于任务关系图） -->
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 
     <!-- 引入 Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
