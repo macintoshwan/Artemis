@@ -3012,34 +3012,6 @@ function renderPriorityMatrix() {
         .attr('text-anchor', 'middle')
         .text('↑重要');
     
-    // 添加刻度标签
-    svg.append('text')
-        .attr('class', 'priority-label')
-        .attr('x', originX - scale - 10)
-        .attr('y', originY + 5)
-        .attr('text-anchor', 'end')
-        .text('-1');
-    
-    svg.append('text')
-        .attr('class', 'priority-label')
-        .attr('x', originX + scale + 10)
-        .attr('y', originY + 5)
-        .text('1');
-    
-    svg.append('text')
-        .attr('class', 'priority-label')
-        .attr('x', originX - 5)
-        .attr('y', originY + scale + 15)
-        .attr('text-anchor', 'middle')
-        .text('-1');
-    
-    svg.append('text')
-        .attr('class', 'priority-label')
-        .attr('x', originX - 5)
-        .attr('y', originY - scale + 5)
-        .attr('text-anchor', 'middle')
-        .text('1');
-    
     // 绘制当前选中的点
     updatePriorityPoint(originX, originY, scale);
     
@@ -3113,8 +3085,8 @@ function updatePriorityPoint(originX, originY, scale) {
 function updatePriorityInfoBox() {
     const infoBox = document.getElementById('priorityInfoBox');
     
-    const importanceLabel = selectedImportance >= 0 ? `重要 ${selectedImportance.toFixed(2)}` : `不重要 ${Math.abs(selectedImportance).toFixed(2)}`;
-    const urgencyLabel = selectedUrgency >= 0 ? `紧急 ${selectedUrgency.toFixed(2)}` : `不紧急 ${Math.abs(selectedUrgency).toFixed(2)}`;
+    const importanceLabel = selectedImportance >= 0 ? `重要 ${selectedImportance.toFixed(1)}` : `不重要 ${Math.abs(selectedImportance).toFixed(1)}`;
+    const urgencyLabel = selectedUrgency >= 0 ? `紧急 ${selectedUrgency.toFixed(1)}` : `不紧急 ${Math.abs(selectedUrgency).toFixed(1)}`;
     
     infoBox.innerHTML = `
         <div style="line-height: 1.8;">

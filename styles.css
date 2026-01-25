@@ -952,7 +952,7 @@ input[readonly] {
 .priority-matrix-container {
     width: 100%;
     max-width: 500px;
-    margin: 0 auto;
+    margin: 0 auto var(--spacing-md) auto;
     aspect-ratio: 1;
     background: rgba(0, 0, 0, 0.3);
     border: var(--border-width-task) solid var(--border-module);
@@ -987,7 +987,7 @@ input[readonly] {
 /* 标签文字 */
 .priority-label {
     fill: var(--text-color);
-    font-size: 12px;
+    font-size: 16px;
     font-weight: 600;
 }
 
@@ -1016,7 +1016,9 @@ input[readonly] {
 
 /* 信息显示框 */
 .priority-info-box {
-    margin-top: var(--spacing-md);
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
     padding: var(--spacing-md);
     background: rgba(254, 165, 0, 0.08);
     border: var(--border-width-task) solid var(--border-module);
