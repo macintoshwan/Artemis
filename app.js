@@ -412,6 +412,11 @@ let currentEditingProjectId = null;
 // 当前详情浮层的项目ID（null 表示未打开）
 let currentDetailProjectId = null;
 
+// 任务依赖关系相关变量
+let currentEditingTaskId = null;        // 当前正在编辑的任务ID
+let currentEditingTaskProjectId = null; // 当前正在编辑的任务所属项目ID
+let selectedPrerequisites = [];         // 当前选择的前置任务ID列表
+
 /**
  * 打开编辑项目浮层（复用新建项目浮层）
  * @param {number} projectId 
@@ -924,6 +929,11 @@ async function openEditTaskModal(projectId, taskId) {
     // 记录当前编辑的任务
     currentEditingTask.projectId = projectId;
     currentEditingTask.taskId = taskId;
+
+    // 保存任务ID和项目ID到任务名称字段的dataset（供任务关联功能使用）
+    const taskNameField = document.getElementById('modalTaskName');
+    taskNameField.dataset.taskId = taskId;
+    taskNameField.dataset.projectId = projectId;
 
     // 填充表单数据（映射数据库字段）
     document.getElementById('modalTaskName').value = task.name || '';
@@ -2385,6 +2395,204 @@ function formatDuration(hours) {
         return `${h}小时`;
     } else {
         return `${h}小时${m}分钟`;
+    }
+}
+
+// ============================================================
+//  任务依赖关系管理
+// ============================================================
+
+/**
+ * 打开任务关联设置浮层
+ */
+function openTaskDependencyModal() {
+    // 获取当前任务的前置任务列表（从全局变量或当前任务数据）
+    const modal = document.getElementById('taskModal');
+    if (!modal) return;
+    
+    // 保存当前编辑的任务信息
+    const taskNameField = document.getElementById('modalTaskName');
+    if (taskNameField && taskNameField.dataset.taskId) {
+        currentEditingTaskId = parseInt(taskNameField.dataset.taskId);
+        currentEditingTaskProjectId = parseInt(taskNameField.dataset.projectId);
+    }
+    
+    // 获取当前任务已有的前置任务
+    if (currentEditingTaskId && currentEditingTaskProjectId) {
+        const project = projects.find(p => p.id === currentEditingTaskProjectId);
+        if (project) {
+            const task = project.tasks.find(t => t.id === currentEditingTaskId);
+            if (task && task.prerequisites) {
+                selectedPrerequisites = [...task.prerequisites];
+            } else {
+                selectedPrerequisites = [];
+            }
+        }
+    } else {
+        selectedPrerequisites = [];
+    }
+    
+    // 更新显示框
+    updatePrerequisitesDisplay();
+    
+    // 显示任务关联设置浮层
+    document.getElementById('taskDependencyModal').style.display = 'flex';
+}
+
+/**
+ * 关闭任务关联设置浮层
+ */
+function closeTaskDependencyModal() {
+    document.getElementById('taskDependencyModal').style.display = 'none';
+}
+
+/**
+ * 打开前置任务选择器
+ */
+function openPrerequisiteSelector() {
+    if (!currentEditingTaskProjectId) {
+        alert('无法获取项目信息');
+        return;
+    }
+    
+    const project = projects.find(p => p.id === currentEditingTaskProjectId);
+    if (!project) {
+        alert('项目不存在');
+        return;
+    }
+    
+    // 渲染任务列表（排除当前任务）
+    const listContainer = document.getElementById('prerequisiteTaskList');
+    const otherTasks = project.tasks.filter(t => t.id !== currentEditingTaskId);
+    
+    if (otherTasks.length === 0) {
+        listContainer.innerHTML = '<div class="task-empty">暂无其他任务</div>';
+    } else {
+        listContainer.innerHTML = otherTasks.map(task => `
+            <label class="prerequisite-item">
+                <input 
+                    type="checkbox" 
+                    value="${task.id}"
+                    ${selectedPrerequisites.includes(task.id) ? 'checked' : ''}
+                    onchange="togglePrerequisite(${task.id}, this.checked)"
+                >
+                <span class="task-name ${task.completed ? 'completed' : ''}">
+                    ${escapeHtml(task.name)}
+                </span>
+                ${task.completed ? '<span class="task-status">✅ 已完成</span>' : '<span class="task-status">⏳ 进行中</span>'}
+            </label>
+        `).join('');
+    }
+    
+    // 显示前置任务选择器
+    document.getElementById('prerequisiteSelectorModal').style.display = 'flex';
+}
+
+/**
+ * 关闭前置任务选择器
+ */
+function closePrerequisiteSelector() {
+    document.getElementById('prerequisiteSelectorModal').style.display = 'none';
+}
+
+/**
+ * 切换前置任务选择
+ * @param {number} taskId 
+ * @param {boolean} checked 
+ */
+function togglePrerequisite(taskId, checked) {
+    if (checked) {
+        if (!selectedPrerequisites.includes(taskId)) {
+            selectedPrerequisites.push(taskId);
+        }
+    } else {
+        selectedPrerequisites = selectedPrerequisites.filter(id => id !== taskId);
+    }
+}
+
+/**
+ * 确认前置任务选择
+ */
+function confirmPrerequisiteSelection() {
+    // 更新显示框
+    updatePrerequisitesDisplay();
+    
+    // 关闭选择器
+    closePrerequisiteSelector();
+}
+
+/**
+ * 更新已选择的前置任务显示框
+ */
+function updatePrerequisitesDisplay() {
+    const displayContainer = document.getElementById('selectedPrerequisitesDisplay');
+    if (!displayContainer) return;
+    
+    if (selectedPrerequisites.length === 0) {
+        displayContainer.innerHTML = '<span class="empty-hint">暂无前置任务</span>';
+        return;
+    }
+    
+    // 获取任务信息
+    const project = projects.find(p => p.id === currentEditingTaskProjectId);
+    if (!project) return;
+    
+    const prerequisiteTasks = selectedPrerequisites
+        .map(id => project.tasks.find(t => t.id === id))
+        .filter(t => t); // 过滤掉不存在的任务
+    
+    displayContainer.innerHTML = prerequisiteTasks.map(task => `
+        <div class="prerequisite-tag">
+            <span>${escapeHtml(task.name)}</span>
+            <span class="remove-btn" onclick="removePrerequisite(${task.id})">✕</span>
+        </div>
+    `).join('');
+}
+
+/**
+ * 移除前置任务
+ * @param {number} taskId 
+ */
+function removePrerequisite(taskId) {
+    selectedPrerequisites = selectedPrerequisites.filter(id => id !== taskId);
+    updatePrerequisitesDisplay();
+}
+
+/**
+ * 确认任务关联设置
+ */
+async function confirmTaskDependency() {
+    if (!currentEditingTaskId || !currentEditingTaskProjectId) {
+        alert('无法保存任务关联');
+        return;
+    }
+    
+    try {
+        // 保存到数据库
+        const { error } = await supabaseClient
+            .from('tasks')
+            .update({
+                prerequisites: selectedPrerequisites
+            })
+            .eq('id', currentEditingTaskId);
+        
+        if (error) {
+            console.error('Error updating task prerequisites:', error);
+            alert('保存失败，请重试');
+            return;
+        }
+        
+        // 刷新界面
+        await renderProjects();
+        if (currentDetailProjectId) {
+            await renderProjectDetailContent();
+        }
+        
+        // 关闭浮层
+        closeTaskDependencyModal();
+    } catch (err) {
+        console.error('Error in confirmTaskDependency:', err);
+        alert('保存失败，请重试');
     }
 }
 

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ARTEMIS</title>
     <!-- 引入外部样式表 -->
-    <link rel="stylesheet" href="styles.css?v=20260122">
+    <link rel="stylesheet" href="styles.css?v=2026012301">
 </head>
 <body>
     <h1>Artemis</h1>
@@ -244,6 +244,11 @@
                             <option value="其他">其他</option>
                         </select>
                     </div>
+
+                    <div class="form-item">
+                        <label>任务关联</label>
+                        <button class="btn-secondary" onclick="openTaskDependencyModal()">设置关联</button>
+                    </div>
                 </div>
             </div>
 
@@ -366,6 +371,64 @@
             <!-- 底部：确认按钮 -->
             <div class="modal-footer">
                 <button class="btn-primary" onclick="confirmDateTimePicker()">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 任务关联设置浮层 ========== -->
+    <div id="taskDependencyModal" class="modal-overlay" style="display: none;">
+        <div class="modal-container">
+            <!-- 左上角：返回按钮 -->
+            <div class="modal-header">
+                <button class="btn-secondary" onclick="closeTaskDependencyModal()">返回</button>
+            </div>
+
+            <!-- 主体：任务关联设置 -->
+            <div class="modal-body">
+                <h2 class="modal-title">任务关联设置</h2>
+                
+                <!-- 选择前置任务按钮 -->
+                <div class="dependency-section">
+                    <button class="btn-primary" onclick="openPrerequisiteSelector()" style="width: 100%;">
+                        选择前置任务
+                    </button>
+                </div>
+
+                <!-- 已选择的前置任务显示框 -->
+                <div class="dependency-section">
+                    <label>已选择的前置任务</label>
+                    <div class="selected-prerequisites-display" id="selectedPrerequisitesDisplay">
+                        <span class="empty-hint">暂无前置任务</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右下角：确认按钮 -->
+            <div class="modal-footer">
+                <button class="btn-primary" onclick="confirmTaskDependency()">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 前置任务选择浮层 ========== -->
+    <div id="prerequisiteSelectorModal" class="modal-overlay" style="display: none;">
+        <div class="modal-container">
+            <!-- 左上角：返回按钮 -->
+            <div class="modal-header">
+                <button class="btn-secondary" onclick="closePrerequisiteSelector()">返回</button>
+            </div>
+
+            <!-- 主体：任务列表（多选） -->
+            <div class="modal-body">
+                <h2 class="modal-title">选择前置任务</h2>
+                <div class="prerequisite-list" id="prerequisiteTaskList">
+                    <!-- 动态生成任务复选框列表 -->
+                </div>
+            </div>
+
+            <!-- 右下角：确认按钮 -->
+            <div class="modal-footer">
+                <button class="btn-primary" onclick="confirmPrerequisiteSelection()">确认</button>
             </div>
         </div>
     </div>

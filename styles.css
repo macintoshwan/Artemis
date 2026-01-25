@@ -716,3 +716,126 @@ input[readonly] {
     font-weight: 600;
 }
 
+/* ============================================================
+   任务依赖关系设置样式
+   ============================================================ */
+
+/* 依赖设置区域 */
+.dependency-section {
+    margin-bottom: var(--spacing-lg);
+}
+
+.dependency-section label {
+    display: block;
+    margin-bottom: var(--spacing-sm);
+    font-size: var(--font-size-base);
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+/* 已选择的前置任务显示框 */
+.selected-prerequisites-display {
+    min-height: 100px;
+    padding: var(--spacing-md);
+    background: rgba(254, 165, 0, 0.05);
+    border: var(--border-width-task) solid var(--border-module);
+    border-radius: var(--radius-base);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    align-items: flex-start;
+}
+
+.selected-prerequisites-display .empty-hint {
+    color: var(--text-color);
+    opacity: 0.5;
+    font-size: var(--font-size-small);
+}
+
+/* 前置任务标签 */
+.prerequisite-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: 6px 12px;
+    background: rgba(102, 255, 204, 0.15);
+    border: var(--border-width-task) solid var(--color-cyan);
+    border-radius: var(--radius-small);
+    font-size: var(--font-size-small);
+    color: var(--text-color);
+}
+
+.prerequisite-tag .remove-btn {
+    cursor: pointer;
+    color: var(--color-danger);
+    font-weight: bold;
+    margin-left: 4px;
+}
+
+.prerequisite-tag .remove-btn:hover {
+    color: #ff0000;
+}
+
+/* 前置任务选择列表 */
+.prerequisite-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    max-height: 400px;
+    overflow-y: auto;
+    padding: var(--spacing-sm);
+}
+
+/* 任务选择项 */
+.prerequisite-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    background: rgba(254, 165, 0, 0.05);
+    border: var(--border-width-task) solid var(--border-module);
+    border-radius: var(--radius-base);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.prerequisite-item:hover {
+    background: rgba(254, 165, 0, 0.1);
+    border-color: var(--color-cyan);
+}
+
+.prerequisite-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--color-cyan);
+}
+
+.prerequisite-item .task-name {
+    flex: 1;
+    font-size: var(--font-size-base);
+    color: var(--text-color);
+}
+
+.prerequisite-item .task-name.completed {
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+
+.prerequisite-item .task-status {
+    font-size: var(--font-size-small);
+    padding: 2px 8px;
+    border-radius: var(--radius-small);
+    background: rgba(102, 255, 204, 0.2);
+    color: var(--color-cyan);
+}
+
+/* 空列表提示 */
+.task-empty {
+    text-align: center;
+    padding: var(--spacing-xl);
+    color: var(--text-color);
+    opacity: 0.5;
+    font-size: var(--font-size-base);
+}
+
