@@ -134,10 +134,6 @@ input[type="number"]::-webkit-outer-spin-button {
 input[type="number"] {
     -moz-appearance: textfield;
 }
-    transition: border-color var(--transition-fast);
-    background: var(--bg-page);
-    color: var(--text-primary);
-}
 
 input[type="text"]:focus {
     border-color: var(--color-cyan);
@@ -548,15 +544,7 @@ button:hover {
     border-color: var(--border-module);
 }
 
-.modal-footer .btn-primary {
-    padding: 12px var(--spacing-xl);
-    font-size: var(--font-size-medium);
-    font-weight: 600;
-    background: transparent;
-    color: var(--text-color);
-}
-
-/* ========== 响应式布局 - 小屏幕单列显示 ========== */
+/* ========== 响应式布局 - 小屏幕单列显示 ========== */ */
 @media (max-width: 600px) {
     .form-grid {
         grid-template-columns: 1fr;
