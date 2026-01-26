@@ -1025,7 +1025,7 @@ function closeEditTaskModal() {
 /**
  * 确认保存任务编辑
  */
-function confirmEditTask() {
+async function confirmEditTask() {
     // 获取表单数据
     const name = document.getElementById('modalTaskName').value.trim();
     const planStartDate = document.getElementById('modalTaskPlanStartDate').value;
@@ -1046,25 +1046,27 @@ function confirmEditTask() {
     }
 
     // 更新或新建任务数据
-    const projects = getProjects();
+    const projects = await getProjects();
     const project = projects.find(p => p.id === currentEditingTask.projectId);
     if (project) {
         if (currentEditingTask.taskId) {
-            // 编辑任务
+            // 编辑任务 - 尽量使用直接更新而不是全量保存
+            /*
             const task = project.tasks.find(t => t.id === currentEditingTask.taskId);
             if (task) {
-                task.name = name;
-                task.planStartDate = planStartDate;
-                task.planEndDate = planEndDate;
-                task.planDuration = planDuration;
-                task.actualStartDate = actualStartDate;
-                task.actualEndDate = actualEndDate;
-                task.actualDuration = actualDuration;
-                task.priority = priority;
-                task.category = category;
-                task.bounty = bounty;
-                task.completed = completed;
+                ...
             }
+            */
+           // 由于我们有了 Supabase 直接更新，这里可以直接复用 Supabase 逻辑
+           // 但为了保持原函数逻辑完整性，仅修复 await bug
+           const task = project.tasks.find(t => t.id === currentEditingTask.taskId);
+           if (task) {
+               Object.assign(task, {
+                   name, planStartDate, planEndDate, planDuration,
+                   actualStartDate, actualEndDate, actualDuration,
+                   priority, category, bounty, completed
+               });
+           }
         } else {
             // 新建任务
             project.tasks.push({
@@ -1082,10 +1084,9 @@ function confirmEditTask() {
                 completed
             });
         }
-        saveProjects(projects);
-        renderProjects();
-        // 如果详情浮层仍在打开，刷新其中内容
-        renderProjectDetailContent();
+        await saveProjects(projects);
+        // await renderProjects(); // Realtime handle this
+        // renderProjectDetailContent();
     }
 
     // 关闭浮层
@@ -1546,6 +1547,14 @@ function confirmBountyPicker() {
     closeBountyPicker();
 }
 
+// ===================================
+// 防抖处理的自动保存
+// ===================================
+
+// 创建防抖版本的保存函数 (延迟 1000ms)
+const debouncedAutoSaveProject = debounce(autoSaveProject, 1000);
+const debouncedAutoSaveTask = debounce(autoSaveTask, 1000);
+
 /**
  * 为项目表单绑定实时保存监听器
  */
@@ -1568,26 +1577,30 @@ function attachProjectAutoSaveListeners() {
     fields.forEach(fieldId => {
         const field = document.getElementById(fieldId);
         if (field) {
-            // 移除旧的监听器
-            field.removeEventListener('change', autoSaveProject);
-            field.removeEventListener('input', autoSaveProject);
+            // 移除旧的监听器 (注意：匿名函数无法精确移除，但这里主要防止重复绑定)
+            // 如果之前直接绑定的是 autoSaveProject，这里也尽量不做破坏性移除，依靠新逻辑覆盖
             
             // 添加新的监听器
-            if (field.type === 'date' || field.tagName === 'SELECT') {
-                field.addEventListener('change', autoSaveProject);
-            } else if (field.type === 'text' && field.hasAttribute('readonly')) {
-                // 对于只读的字段，同时更新相对时间显示
-                field.addEventListener('change', () => {
-                    autoSaveProject();
-                    updateProjectRelativeTimes();
-                });
+            // 文本输入框使用 input 事件 + 防抖
+            // 选择框和日期使用 change 事件 (立即保存或使用较短防抖，这里统一使用防抖体验更好)
+            if (field.type === 'text' || field.type === 'number' || field.tagName === 'TEXTAREA') {
+                 if (field.hasAttribute('readonly')) {
+                    // 只读字段（如通过弹窗选择的）通常触发 change
+                    field.addEventListener('change', () => {
+                        autoSaveProject(); // 这种非键盘输入的，立即保存
+                        updateProjectRelativeTimes();
+                    });
+                 } else {
+                    field.addEventListener('input', debouncedAutoSaveProject);
+                 }
             } else {
-                // 文本和数字输入框使用input事件（实时保存）
-                field.addEventListener('input', autoSaveProject);
+                // select, date 等
+                field.addEventListener('change', debouncedAutoSaveProject);
             }
         }
     });
 }
+
 
 /**
  * 自动保存项目数据
@@ -1612,23 +1625,33 @@ async function autoSaveProject() {
     const bountyValue = document.getElementById('modalBounty').value;
     const bounty = bountyValue ? parseFloat(bountyValue) : 0;
     
-    // 更新项目数据
-    const projects = await getProjects();
-    const project = projects.find(p => p.id === currentEditingProjectId);
-    if (project) {
-        project.name = name;
-        project.plan_start_date = planStartDate || null;
-        project.plan_end_date = planEndDate || null;
-        project.plan_duration = planDuration;
-        project.actual_start_date = actualStartDate || null;
-        project.actual_end_date = actualEndDate || null;
-        project.actual_duration = actualDuration;
-        project.priority = priority;
-        project.category = category;
-        project.bounty = bounty;
-        await saveProject(project);
-        await renderProjects();
-        await renderProjectDetailContent();
+    // 优化：直接更新数据库，而不是先读取所有项目
+    try {
+        const { error } = await supabaseClient
+            .from('projects')
+            .update({
+                name,
+                plan_start_date: planStartDate || null,
+                plan_end_date: planEndDate || null,
+                plan_duration: planDuration,
+                actual_start_date: actualStartDate || null,
+                actual_end_date: actualEndDate || null,
+                actual_duration: actualDuration,
+                priority,
+                category,
+                bounty
+            })
+            .eq('id', currentEditingProjectId);
+
+        if (error) {
+            console.error('Error auto-saving project:', error);
+        }
+        
+        // 注意：由于有 Realtime 订阅，这里其实不需要手动调用 renderProjects
+        // Supabase 推送更新后会自动触发 renderProjects
+        // 但为了界面即时反馈，保留相对时间更新
+    } catch (err) {
+        console.error('Error in autoSaveProject:', err);
     }
     
     // 更新相对时间显示和验证状态
@@ -1658,22 +1681,20 @@ function attachTaskAutoSaveListeners() {
     fields.forEach(fieldId => {
         const field = document.getElementById(fieldId);
         if (field) {
-            // 移除旧的监听器
-            field.removeEventListener('change', autoSaveTask);
-            field.removeEventListener('input', autoSaveTask);
-            
             // 添加新的监听器
-            if (field.type === 'date' || field.tagName === 'SELECT') {
-                field.addEventListener('change', autoSaveTask);
-            } else if (field.type === 'text' && field.hasAttribute('readonly')) {
-                // 对于只读的字段，同时更新相对时间显示
-                field.addEventListener('change', () => {
-                    autoSaveTask();
-                    updateTaskRelativeTimes();
-                });
+            if (field.type === 'text' || field.type === 'number') {
+                if (field.hasAttribute('readonly')) {
+                    // 只读字段
+                    field.addEventListener('change', () => {
+                        autoSaveTask();
+                        updateTaskRelativeTimes();
+                    });
+                } else {
+                    // 文本和数字输入框使用input事件 + 防抖
+                    field.addEventListener('input', debouncedAutoSaveTask);
+                }
             } else {
-                // 文本和数字输入框使用input事件
-                field.addEventListener('input', autoSaveTask);
+                field.addEventListener('change', debouncedAutoSaveTask);
             }
         }
     });
@@ -1726,8 +1747,9 @@ async function autoSaveTask() {
             return;
         }
         
-        await renderProjects();
-        await renderProjectDetailContent();
+        // 移除手动渲染，依赖 Realtime 订阅更新
+        // await renderProjects();
+        // await renderProjectDetailContent();
     } catch (err) {
         console.error('Error in autoSaveTask:', err);
     }
