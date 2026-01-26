@@ -2623,6 +2623,8 @@ function confirmPrerequisiteSelection() {
  */
 async function updatePrerequisitesDisplay() {
     const displayContainer = document.getElementById('selectedPrerequisitesDisplay');
+    const displayInput = document.getElementById('taskDependencyDisplay');
+    
     if (!displayContainer) {
         console.error('selectedPrerequisitesDisplay not found');
         return;
@@ -2630,6 +2632,9 @@ async function updatePrerequisitesDisplay() {
     
     if (!selectedPrerequisites || selectedPrerequisites.length === 0) {
         displayContainer.innerHTML = '<span class="empty-hint">暂无前置任务</span>';
+        if (displayInput) {
+            displayInput.value = '';
+        }
         return;
     }
     
@@ -2637,6 +2642,9 @@ async function updatePrerequisitesDisplay() {
     const projectsData = await getProjects();
     if (!projectsData || projectsData.length === 0) {
         displayContainer.innerHTML = '<span class="empty-hint">加载中...</span>';
+        if (displayInput) {
+            displayInput.value = '';
+        }
         return;
     }
     
@@ -2645,6 +2653,9 @@ async function updatePrerequisitesDisplay() {
     if (!project) {
         console.error('Project not found:', currentEditingTaskProjectId);
         displayContainer.innerHTML = '<span class="empty-hint">项目不存在</span>';
+        if (displayInput) {
+            displayInput.value = '';
+        }
         return;
     }
     
@@ -2654,15 +2665,25 @@ async function updatePrerequisitesDisplay() {
     
     if (prerequisiteTasks.length === 0) {
         displayContainer.innerHTML = '<span class="empty-hint">前置任务不存在</span>';
+        if (displayInput) {
+            displayInput.value = '';
+        }
         return;
     }
     
+    // 更新弹窗内的显示
     displayContainer.innerHTML = prerequisiteTasks.map(task => `
         <div class="prerequisite-tag">
             <span>${escapeHtml(task.name)}</span>
             <span class="remove-btn" onclick="removePrerequisite(${task.id})">✕</span>
         </div>
     `).join('');
+    
+    // 更新主表单的input显示
+    if (displayInput) {
+        const taskNames = prerequisiteTasks.map(t => t.name).join('.');
+        displayInput.value = `[${taskNames}]`;
+    }
 }
 
 /**
@@ -3211,9 +3232,9 @@ function confirmPriorityMatrix() {
  */
 function updatePriorityButtonDisplay() {
     const priorityField = document.getElementById('modalTaskPriority');
-    const displaySpan = document.getElementById('priorityMatrixDisplay');
+    const displayInput = document.getElementById('priorityMatrixDisplay');
     
-    if (!priorityField || !displaySpan) return;
+    if (!priorityField || !displayInput) return;
     
     try {
         let data;
@@ -3229,13 +3250,10 @@ function updatePriorityButtonDisplay() {
         const importance = data.importance || 0;
         const urgency = data.urgency || 0;
         
-        const importanceLabel = importance >= 0 ? `重要${importance.toFixed(1)}` : `不重要${Math.abs(importance).toFixed(1)}`;
-        const urgencyLabel = urgency >= 0 ? `紧急${urgency.toFixed(1)}` : `不紧急${Math.abs(urgency).toFixed(1)}`;
-        
-        displaySpan.textContent = `${importanceLabel} / ${urgencyLabel}`;
+        displayInput.value = `重要${importance.toFixed(1)}/紧急${urgency.toFixed(1)}`;
     } catch (e) {
         console.error('Error parsing priority:', e);
-        displaySpan.textContent = '选择优先级';
+        displayInput.value = '';
     }
 }
 

@@ -152,9 +152,7 @@
 
                     <div class="form-item">
                         <label>重要度/紧急度</label>
-                        <button class="btn-secondary" onclick="openPriorityMatrix()" id="priorityMatrixButton">
-                            <span id="priorityMatrixDisplay">选择优先级</span>
-                        </button>
+                        <input type="text" id="priorityMatrixDisplay" readonly onclick="openPriorityMatrix()" placeholder="点击选择优先级">
                         <!-- 隐藏字段存储数据 -->
                         <input type="hidden" id="modalTaskPriority" value="{\"importance\": 0, \"urgency\": 0}">
                     </div>
@@ -247,7 +245,7 @@
 
                     <div class="form-item">
                         <label>任务关联</label>
-                        <button class="btn-secondary" onclick="openTaskDependencyModal()">设置关联</button>
+                        <input type="text" id="taskDependencyDisplay" readonly onclick="openTaskDependencyModal()" placeholder="点击设置关联">
                     </div>
                 </div>
             </div>
