@@ -639,10 +639,8 @@ async function openAddTaskForProject(projectId) {    // 关闭项目详情浮层
     
     modal.style.display = 'flex';
     
-    // 更新相对时间显示（在显示浮层后执行，确保DOM已准备好）
-    setTimeout(() => {
-        updateTaskRelativeTimes();
-    }, 0);
+    // 更新相对时间显示
+    updateTaskRelativeTimes();
 }
 
 /**
@@ -984,13 +982,18 @@ async function openEditTaskModal(projectId, taskId) {
     const footer = document.getElementById('taskModalFooter');
     if (footer) footer.style.display = 'none';
     
+    // 初始化任务关联显示
+    currentEditingTaskProjectId = projectId;
+    selectedPrerequisites = task.prerequisites || [];
+    updatePrerequisitesDisplay();
+    
+    // 等待DOM更新后再更新相对时间显示
+    requestAnimationFrame(() => {
+        updateTaskRelativeTimes();
+    });
+    
     // 绑定实时保存事件
     attachTaskAutoSaveListeners();
-    
-    // 更新相对时间显示（在显示浮层后执行，确保DOM已准备好）
-    setTimeout(() => {
-        updateTaskRelativeTimes();
-    }, 0);
 }
 
 /**
