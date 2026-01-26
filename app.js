@@ -982,15 +982,17 @@ async function openEditTaskModal(projectId, taskId) {
     const footer = document.getElementById('taskModalFooter');
     if (footer) footer.style.display = 'none';
     
-    // 初始化任务关联显示
+    // 更新相对时间显示（延迟确保DOM渲染完成）
+    setTimeout(() => {
+        updateTaskRelativeTimes();
+    }, 0);
+    
+    // 更新任务关联显示
     currentEditingTaskProjectId = projectId;
     selectedPrerequisites = task.prerequisites || [];
-    updatePrerequisitesDisplay();
-    
-    // 等待DOM更新后再更新相对时间显示
-    requestAnimationFrame(() => {
-        updateTaskRelativeTimes();
-    });
+    setTimeout(() => {
+        updatePrerequisitesDisplay();
+    }, 0);
     
     // 绑定实时保存事件
     attachTaskAutoSaveListeners();
