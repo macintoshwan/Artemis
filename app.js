@@ -39,8 +39,15 @@
  */
 
 // ============================================================
-// 配置常量
-// =============== 通用防抖函数 ===============
+// 工具函数
+// ============================================================
+
+/**
+ * 防抖函数：在多次触发时，只在最后一次停止触发 wait 毫秒后执行
+ * @param {Function} func - 要防抖的函数
+ * @param {number} wait - 等待时间（毫秒）
+ * @returns {Function} - 防抖后的函数
+ */
 function debounce(func, wait) {
     let timeout;
     return function(...args) {
@@ -52,9 +59,8 @@ function debounce(func, wait) {
     };
 }
 
-// 防抖版自动保存
-const debouncedAutoSaveProject = debounce(autoSaveProject, 1000);
-const debouncedAutoSaveTask = debounce(autoSaveTask, 1000);
+// ============================================================
+// 配置常量
 // ============================================================
 
 // Supabase 配置
@@ -1039,8 +1045,9 @@ function closeEditTaskModal() {
 
 /**
  * 确认保存任务编辑
+ * 修复：添加 async/await 正确处理异步操作
  */
-function confirmEditTask() {
+async function confirmEditTask() {
     // 获取表单数据
     const name = document.getElementById('modalTaskName').value.trim();
     const planStartDate = document.getElementById('modalTaskPlanStartDate').value;
@@ -1061,7 +1068,7 @@ function confirmEditTask() {
     }
 
     // 更新或新建任务数据
-    const projects = getProjects();
+    const projects = await getProjects();  // 修复：添加 await
     const project = projects.find(p => p.id === currentEditingTask.projectId);
     if (project) {
         if (currentEditingTask.taskId) {
@@ -1097,10 +1104,10 @@ function confirmEditTask() {
                 completed
             });
         }
-        saveProjects(projects);
-        renderProjects();
-        // 如果详情浮层仍在打开，刷新其中内容
-        renderProjectDetailContent();
+        await saveProjects(projects);  // 修复：添加 await
+        // 移除手动渲染，Realtime 会自动处理
+        // await renderProjects();
+        // renderProjectDetailContent();
     }
 
     // 关闭浮层
@@ -1561,10 +1568,19 @@ function confirmBountyPicker() {
     closeBountyPicker();
 }
 
+// 创建防抖版本的自动保存函数（延迟1秒）
+let debouncedAutoSaveProject = null;
+let debouncedAutoSaveTask = null;
+
 /**
  * 为项目表单绑定实时保存监听器
  */
 function attachProjectAutoSaveListeners() {
+    // 初始化防抖函数（如果还未初始化）
+    if (!debouncedAutoSaveProject) {
+        debouncedAutoSaveProject = debounce(autoSaveProject, 1000);
+    }
+    
     // 获取所有输入字段
     const fields = [
         'modalProjectName',
@@ -1583,16 +1599,25 @@ function attachProjectAutoSaveListeners() {
     fields.forEach(fieldId => {
         const field = document.getElementById(fieldId);
         if (field) {
-            // 只读字段（如通过弹窗选择的）通常触发 change
-            if (field.type === 'text' && field.hasAttribute('readonly')) {
+            // 移除旧的监听器（防止重复绑定）
+            field.removeEventListener('change', autoSaveProject);
+            field.removeEventListener('input', autoSaveProject);
+            field.removeEventListener('change', debouncedAutoSaveProject);
+            field.removeEventListener('input', debouncedAutoSaveProject);
+            
+            // 添加新的监听器
+            if (field.type === 'date' || field.tagName === 'SELECT') {
+                // 日期和下拉选择使用防抖版本
+                field.addEventListener('change', debouncedAutoSaveProject);
+            } else if (field.type === 'text' && field.hasAttribute('readonly')) {
+                // 对于只读的字段（如通过弹窗选择的），立即保存并更新相对时间
                 field.addEventListener('change', () => {
                     autoSaveProject();
                     updateProjectRelativeTimes();
                 });
-            } else if (field.type === 'text' || field.type === 'number' || field.tagName === 'TEXTAREA') {
-                field.addEventListener('input', debouncedAutoSaveProject);
             } else {
-                field.addEventListener('change', debouncedAutoSaveProject);
+                // 文本和数字输入框使用防抖版本（避免每个字符都保存）
+                field.addEventListener('input', debouncedAutoSaveProject);
             }
         }
     });
@@ -1600,6 +1625,7 @@ function attachProjectAutoSaveListeners() {
 
 /**
  * 自动保存项目数据
+ * 优化：直接更新数据库，不再先读取所有项目数据
  */
 async function autoSaveProject() {
     if (!currentEditingProjectId) return;
@@ -1621,26 +1647,35 @@ async function autoSaveProject() {
     const bountyValue = document.getElementById('modalBounty').value;
     const bounty = bountyValue ? parseFloat(bountyValue) : 0;
     
-    // 更新项目数据
-    const projects = await getProjects();
-    const project = projects.find(p => p.id === currentEditingProjectId);
-    if (project) {
-        project.name = name;
-        project.plan_start_date = planStartDate || null;
-        project.plan_end_date = planEndDate || null;
-        project.plan_duration = planDuration;
-        project.actual_start_date = actualStartDate || null;
-        project.actual_end_date = actualEndDate || null;
-        project.actual_duration = actualDuration;
-        project.priority = priority;
-        project.category = category;
-        project.bounty = bounty;
-        await saveProject(project);
-        await renderProjects();
-        await renderProjectDetailContent();
+    // 优化：直接更新数据库，而不是先读取所有项目
+    try {
+        const { error } = await supabaseClient
+            .from('projects')
+            .update({
+                name,
+                plan_start_date: planStartDate || null,
+                plan_end_date: planEndDate || null,
+                plan_duration: planDuration,
+                actual_start_date: actualStartDate || null,
+                actual_end_date: actualEndDate || null,
+                actual_duration: actualDuration,
+                priority,
+                category,
+                bounty
+            })
+            .eq('id', currentEditingProjectId);
+
+        if (error) {
+            console.error('Error auto-saving project:', error);
+        }
+        
+        // 注意：由于有 Realtime 订阅，数据库变更会自动触发 renderProjects
+        // 这里移除手动渲染，避免重复渲染导致的性能问题
+    } catch (err) {
+        console.error('Error in autoSaveProject:', err);
     }
     
-    // 更新相对时间显示和验证状态
+    // 更新相对时间显示和验证状态（UI即时反馈）
     updateProjectRelativeTimes();
 }
 
@@ -1648,6 +1683,11 @@ async function autoSaveProject() {
  * 为任务表单绑定实时保存监听器
  */
 function attachTaskAutoSaveListeners() {
+    // 初始化防抖函数（如果还未初始化）
+    if (!debouncedAutoSaveTask) {
+        debouncedAutoSaveTask = debounce(autoSaveTask, 1000);
+    }
+    
     // 获取所有输入字段
     const fields = [
         'modalTaskName',
@@ -1667,15 +1707,25 @@ function attachTaskAutoSaveListeners() {
     fields.forEach(fieldId => {
         const field = document.getElementById(fieldId);
         if (field) {
-            if (field.type === 'text' && field.hasAttribute('readonly')) {
+            // 移除旧的监听器（防止重复绑定）
+            field.removeEventListener('change', autoSaveTask);
+            field.removeEventListener('input', autoSaveTask);
+            field.removeEventListener('change', debouncedAutoSaveTask);
+            field.removeEventListener('input', debouncedAutoSaveTask);
+            
+            // 添加新的监听器
+            if (field.type === 'date' || field.tagName === 'SELECT') {
+                // 日期和下拉选择使用防抖版本
+                field.addEventListener('change', debouncedAutoSaveTask);
+            } else if (field.type === 'text' && field.hasAttribute('readonly')) {
+                // 对于只读的字段（如通过弹窗选择的），立即保存并更新相对时间
                 field.addEventListener('change', () => {
                     autoSaveTask();
                     updateTaskRelativeTimes();
                 });
-            } else if (field.type === 'text' || field.type === 'number') {
-                field.addEventListener('input', debouncedAutoSaveTask);
             } else {
-                field.addEventListener('change', debouncedAutoSaveTask);
+                // 文本和数字输入框使用防抖版本（避免每个字符都保存）
+                field.addEventListener('input', debouncedAutoSaveTask);
             }
         }
     });
@@ -1728,13 +1778,14 @@ async function autoSaveTask() {
             return;
         }
         
-        await renderProjects();
-        await renderProjectDetailContent();
+        // 移除手动渲染，依赖 Realtime 订阅更新
+        // Supabase 的 Realtime 功能会自动触发 renderProjects 和 renderProjectDetailContent
+        // 这里手动调用会导致重复渲染，影响性能
     } catch (err) {
         console.error('Error in autoSaveTask:', err);
     }
     
-    // 更新相对时间显示和验证状态
+    // 更新相对时间显示和验证状态（UI即时反馈）
     updateTaskRelativeTimes();
 }
 
@@ -1811,79 +1862,77 @@ function confirmDateTimePicker() {
     // 格式化为 YYYY-MM-DD HH:MM
     const formattedValue = `${selectedDate} ${String(selectedHour).padStart(2, '0')}:${String(selectedMinute).padStart(2, '0')}`;
     
-    // 直接更新数据库，无需全量读取
-    try {
-        const { error } = await supabaseClient
-            .from('projects')
-            .update({
-                name,
-                plan_start_date: planStartDate || null,
-                plan_end_date: planEndDate || null,
-                plan_duration: planDuration,
-                actual_start_date: actualStartDate || null,
-                actual_end_date: actualEndDate || null,
-                actual_duration: actualDuration,
-                priority,
-                category,
-                bounty
-            })
-            .eq('id', currentEditingProjectId);
-        if (error) {
-            console.error('Error auto-saving project:', error);
+    // 设置值到输入框
+    const field = document.getElementById(currentDateTimeFieldId);
+    if (field) {
+        field.value = formattedValue;
+        
+        // 触发自动保存
+        if (currentDateTimeFieldId.startsWith('modalTask')) {
+            autoSaveTask();
+            updateTaskRelativeTimes();
+        } else if (currentDateTimeFieldId.startsWith('modal')) {
+            autoSaveProject();
+            updateProjectRelativeTimes();
         }
-    } catch (err) {
-        console.error('Error in autoSaveProject:', err);
     }
-    // 只需本地刷新相对时间
-    updateProjectRelativeTimes();
+    
+    closeDateTimePicker();
+}
+
+/**
+ * 生成日期表格
+ * @param {string} initialDate - 初始日期 YYYY-MM-DD
  */
 function generateDatePicker(initialDate) {
     const container = document.getElementById('datePickerTable');
     container.innerHTML = '';
     
-    // 更新或新建任务数据
-    (async () => {
-        const projects = await getProjects();
-        const project = projects.find(p => p.id === currentEditingTask.projectId);
-        if (project) {
-            if (currentEditingTask.taskId) {
-                // 编辑任务
-                const task = project.tasks.find(t => t.id === currentEditingTask.taskId);
-                if (task) {
-                    task.name = name;
-                    task.planStartDate = planStartDate;
-                    task.planEndDate = planEndDate;
-                    task.planDuration = planDuration;
-                    task.actualStartDate = actualStartDate;
-                    task.actualEndDate = actualEndDate;
-                    task.actualDuration = actualDuration;
-                    task.priority = priority;
-                    task.category = category;
-                    task.bounty = bounty;
-                    task.completed = completed;
-                }
-            } else {
-                // 新建任务
-                project.tasks.push({
-                    id: Date.now(),
-                    name,
-                    planStartDate,
-                    planEndDate,
-                    planDuration,
-                    actualStartDate,
-                    actualEndDate,
-                    actualDuration,
-                    priority,
-                    category,
-                    bounty,
-                    completed
-                });
-            }
-            await saveProjects(projects);
-            // 不再手动 renderProjects，依赖 Realtime
+    // 生成过去5天到未来15天的日期
+    const dates = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    for (let i = -10; i <= 20; i++) {
+        const date = new Date(today);
+        date.setDate(date.getDate() + i);
+        const dateStr = date.toISOString().split('T')[0];
+        const displayStr = formatDateDisplay(date);
+        dates.push({ value: dateStr, display: displayStr });
+    }
+    
+    // 创建选项元素
+    const todayStr = new Date().toISOString().split('T')[0]; // 获取今天日期字符串
+    dates.forEach(date => {
+        const item = document.createElement('div');
+        item.className = 'picker-item';
+        item.textContent = date.display;
+        item.dataset.value = date.value;
+        
+        if (date.value === initialDate) {
+            item.classList.add('selected');
         }
-        closeEditTaskModal();
-    })();
+        
+        // 如果是今天，添加current类
+        if (date.value === todayStr) {
+            item.classList.add('current');
+        }
+        
+        item.addEventListener('click', () => {
+            // 移除其他选中项
+            container.querySelectorAll('.picker-item').forEach(el => el.classList.remove('selected'));
+            item.classList.add('selected');
+            selectedDate = date.value;
+            updateDateRelativeDisplay(date.value);
+        });
+        
+        container.appendChild(item);
+    });
+    
+    // 初始化相对日期显示
+    updateDateRelativeDisplay(initialDate);
+}
+
+/**
  * 生成小时表格
  * @param {number} initialHour - 初始小时 0-23
  */
