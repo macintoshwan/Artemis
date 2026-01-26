@@ -2098,17 +2098,32 @@ function updateCombinedDateTime(fieldId, boxId) {
         return;
     }
     
-    // 解析格式：YYYY-MM-DD HH:MM
-    const parts = value.split(' ');
-    if (parts.length !== 2) {
+    let dateStr, hour, minute;
+    
+    // 尝试解析多种格式
+    if (value.includes('T')) {
+        // ISO格式：2026-01-25T12:30:00
+        const isoMatch = value.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/);
+        if (isoMatch) {
+            dateStr = isoMatch[1];
+            hour = parseInt(isoMatch[2]);
+            minute = parseInt(isoMatch[3]);
+        }
+    } else if (value.includes(' ')) {
+        // 空格格式：YYYY-MM-DD HH:MM
+        const parts = value.split(' ');
+        if (parts.length >= 2) {
+            dateStr = parts[0];
+            const timeParts = parts[1].split(':');
+            hour = parseInt(timeParts[0]);
+            minute = parseInt(timeParts[1]) || 0;
+        }
+    }
+    
+    if (!dateStr || isNaN(hour)) {
         box.textContent = '-';
         return;
     }
-    
-    const dateStr = parts[0];
-    const timeParts = parts[1].split(':');
-    const hour = parseInt(timeParts[0]);
-    const minute = parseInt(timeParts[1]) || 0;
     
     // 计算天数差
     const today = new Date();
