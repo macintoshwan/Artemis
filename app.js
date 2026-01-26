@@ -982,17 +982,8 @@ async function openEditTaskModal(projectId, taskId) {
     const footer = document.getElementById('taskModalFooter');
     if (footer) footer.style.display = 'none';
     
-    // 更新相对时间显示（延迟确保DOM渲染完成）
-    setTimeout(() => {
-        updateTaskRelativeTimes();
-    }, 0);
-    
-    // 更新任务关联显示
-    currentEditingTaskProjectId = projectId;
-    selectedPrerequisites = task.prerequisites || [];
-    setTimeout(() => {
-        updatePrerequisitesDisplay();
-    }, 0);
+    // 更新相对时间显示
+    updateTaskRelativeTimes();
     
     // 绑定实时保存事件
     attachTaskAutoSaveListeners();
@@ -2092,38 +2083,30 @@ function updateCombinedDateTime(fieldId, boxId) {
     
     if (!field || !box) return;
     
-    const value = field.value;
-    if (!value) {
+    const rawValue = field.value;
+    if (!rawValue) {
         box.textContent = '-';
         return;
     }
     
-    let dateStr, hour, minute;
-    
-    // 尝试解析多种格式
-    if (value.includes('T')) {
-        // ISO格式：2026-01-25T12:30:00
-        const isoMatch = value.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/);
-        if (isoMatch) {
-            dateStr = isoMatch[1];
-            hour = parseInt(isoMatch[2]);
-            minute = parseInt(isoMatch[3]);
-        }
-    } else if (value.includes(' ')) {
-        // 空格格式：YYYY-MM-DD HH:MM
-        const parts = value.split(' ');
-        if (parts.length >= 2) {
-            dateStr = parts[0];
-            const timeParts = parts[1].split(':');
-            hour = parseInt(timeParts[0]);
-            minute = parseInt(timeParts[1]) || 0;
-        }
+    // 兼容不同格式："YYYY-MM-DD HH:MM"、"YYYY-MM-DDTHH:MM:SSZ"、仅日期
+    let normalized = rawValue.replace('T', ' ').replace('Z', '').trim();
+    // 去掉时区偏移（+08:00）等，只保留日期和时间部分
+    if (normalized.includes('+')) {
+        normalized = normalized.split('+')[0].trim();
     }
-    
-    if (!dateStr || isNaN(hour)) {
+    if (!normalized.includes(' ')) {
+        normalized = `${normalized} 00:00`;
+    }
+    const parts = normalized.split(' ');
+    if (parts.length < 2) {
         box.textContent = '-';
         return;
     }
+    const dateStr = parts[0];
+    const timeParts = parts[1].split(':');
+    const hour = parseInt(timeParts[0] || '0', 10);
+    const minute = parseInt(timeParts[1] || '0', 10);
     
     // 计算天数差
     const today = new Date();
@@ -2147,7 +2130,7 @@ function updateCombinedDateTime(fieldId, boxId) {
         dayText = `${Math.abs(diffDays)}天前`;
     }
     
-    // 计算小时和分钟差
+    // 计算小时和分钟差（基于当前时间）
     const now = new Date();
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
