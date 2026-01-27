@@ -6,7 +6,7 @@
    Web Font 字体加载
    ============================================================ */
 
-/* 方正粗宋 - 用于汉字和中文标点 */
+/* 方正粗宋 - 全字符 */
 @font-face {
     font-family: 'ProjectFont';
     src: local('方正粗宋简体'),
@@ -16,20 +16,6 @@
     font-weight: normal;
     font-style: normal;
     font-display: swap;
-    unicode-range: U+4E00-9FFF, U+3000-303F, U+FF00-FFEF, U+2000-206F;
-    /* 汉字 + 中文标点 + 全角字符 + 通用标点 */
-}
-
-/* Filament - 用于数字和拉丁字母 */
-@font-face {
-    font-family: 'ProjectFont';
-    src: url('./fonts/Filament.woff2') format('woff2'),
-         url('./fonts/Filament.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-    font-display: swap;
-    unicode-range: U+0000-007F, U+0080-00FF;
-    /* ASCII + 拉丁扩展（包含数字、字母、基本标点） */
 }
 
 /* ============================================================
