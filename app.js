@@ -820,6 +820,8 @@ async function openAddTaskForProject(projectId) {    // 关闭项目详情浮层
     document.getElementById('modalTaskCategory').value = project?.category || '工作';
     document.getElementById('modalTaskBounty').value = '';
     document.getElementById('modalTaskCompleted').value = 'false';
+    document.getElementById('taskDependencyDisplay').value = ''; // 清空任务关联显示
+    selectedPrerequisites = []; // 清空已选前置任务
 
     // 修改标题为“添加任务”并显示
     const modal = document.getElementById('editTaskModal');
@@ -1168,6 +1170,28 @@ async function openEditTaskModal(projectId, taskId) {
     document.getElementById('modalTaskBounty').value = task.bounty || 0;
     document.getElementById('modalTaskCompleted').value = task.completed ? 'true' : 'false';
 
+    // 设置任务关联显示
+    const dependencyDisplay = document.getElementById('taskDependencyDisplay');
+    if (dependencyDisplay) {
+        if (task.prerequisites && task.prerequisites.length > 0) {
+            // 查找前置任务的名称
+            const prerequisiteNames = task.prerequisites
+                .map(prereqId => {
+                    const prereqTask = project.tasks.find(t => t.id === prereqId || t.id === parseInt(prereqId));
+                    return prereqTask ? prereqTask.name : null;
+                })
+                .filter(name => name !== null);
+            
+            if (prerequisiteNames.length > 0) {
+                dependencyDisplay.value = `[${prerequisiteNames.join('.')}]`;
+            } else {
+                dependencyDisplay.value = '';
+            }
+        } else {
+            dependencyDisplay.value = '';
+        }
+    }
+
     // 显示浮层
     document.getElementById('editTaskModal').style.display = 'flex';
     
@@ -1203,6 +1227,7 @@ function closeEditTaskModal() {
     document.getElementById('modalTaskCategory').value = '工作';
     document.getElementById('modalTaskBounty').value = '';
     document.getElementById('modalTaskCompleted').value = 'false';
+    document.getElementById('taskDependencyDisplay').value = '';
     
     // 清空当前编辑状态
     currentEditingTask.projectId = null;
@@ -2913,7 +2938,7 @@ async function updatePrerequisitesDisplay() {
     }
     
     const prerequisiteTasks = selectedPrerequisites
-        .map(id => project.tasks.find(t => t.id === id))
+        .map(id => project.tasks.find(t => t.id === id || t.id === parseInt(id) || String(t.id) === String(id)))
         .filter(t => t); // 过滤掉不存在的任务
     
     if (prerequisiteTasks.length === 0) {

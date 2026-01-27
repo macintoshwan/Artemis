@@ -978,25 +978,21 @@ input[readonly] {
 
 .task-node circle {
     fill: rgba(254, 165, 0, 0.8);
-    stroke: var(--color-cyan);
-    stroke-width: 2px;
+    stroke: none;
     transition: all 0.15s ease;
 }
 
 .task-node:hover circle {
     fill: var(--color-cyan);
-    stroke: var(--color-warning);
     filter: drop-shadow(0 0 8px rgba(102, 255, 204, 0.6));
 }
 
 .task-node.completed circle {
     fill: rgba(102, 255, 204, 0.6);
-    stroke: var(--color-cyan);
 }
 
 .task-node.dragging circle {
     fill: var(--color-danger);
-    stroke: #ffffff;
     filter: drop-shadow(0 0 12px rgba(255, 68, 68, 0.8));
 }
 
