@@ -35,12 +35,6 @@
 
     <!-- ========== 主应用界面 ========== -->
     <div id="mainApp" style="display: none;">
-        <!-- 用户信息栏 -->
-        <div class="user-bar">
-            <span id="userEmail"></span>
-            <button class="btn-logout" onclick="signOut()">退出登录</button>
-        </div>
-
         <h1>Artemis</h1>
 
         <!-- 上方区域：项目列表容器 -->
@@ -49,6 +43,12 @@
         <!-- 下方区域：新建项目按钮 -->
         <div class="create-project-section">
             <button class="btn-primary btn-create-project" onclick="openCreateProjectModal()">新建项目</button>
+        </div>
+
+        <!-- 用户信息栏（底部） -->
+        <div class="user-bar">
+            <span id="userEmail"></span>
+            <button class="btn-logout" onclick="signOut()">退出登录</button>
         </div>
     </div>
 
