@@ -910,11 +910,46 @@ input[readonly] {
     border-radius: var(--radius-base);
 }
 
+/* 任务关系图标题栏 */
+.task-graph-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-sm);
+}
+
 .task-graph-title {
     font-size: var(--font-size-base);
     color: var(--text-color);
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: 0;
     font-weight: 600;
+}
+
+/* 模式切换按钮组 */
+.task-graph-mode-buttons {
+    display: flex;
+    gap: 4px;
+}
+
+.task-graph-mode-btn {
+    padding: 4px 10px;
+    font-size: var(--font-size-small);
+    font-family: var(--font-family);
+    background: transparent;
+    border: 1px solid var(--border-module);
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.task-graph-mode-btn:hover {
+    background: rgba(254, 165, 0, 0.15);
+}
+
+.task-graph-mode-btn.active {
+    background: var(--color-primary);
+    color: #000;
+    border-color: var(--color-primary);
 }
 
 .task-graph {

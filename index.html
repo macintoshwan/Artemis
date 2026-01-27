@@ -307,7 +307,15 @@
                 
                 <!-- 任务关系图 -->
                 <div class="task-graph-container">
-                    <h3 class="task-graph-title">任务关系图</h3>
+                    <div class="task-graph-header">
+                        <h3 class="task-graph-title">任务关系图</h3>
+                        <div class="task-graph-mode-buttons">
+                            <button class="task-graph-mode-btn active" data-mode="combined" onclick="setGraphMode('combined')">综合</button>
+                            <button class="task-graph-mode-btn" data-mode="importance" onclick="setGraphMode('importance')">重要</button>
+                            <button class="task-graph-mode-btn" data-mode="urgency" onclick="setGraphMode('urgency')">紧急</button>
+                            <button class="task-graph-mode-btn" data-mode="bounty" onclick="setGraphMode('bounty')">赏金</button>
+                        </div>
+                    </div>
                     <div id="taskGraphContainer" class="task-graph">
                         <svg id="taskGraphSvg"></svg>
                     </div>

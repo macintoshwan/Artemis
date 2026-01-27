@@ -2991,12 +2991,35 @@ async function confirmTaskDependency() {
 // ============================================================
 
 let taskGraphSimulation = null;  // D3 力模拟对象
+let currentGraphMode = 'combined';  // 当前图表模式：combined, importance, urgency, bounty
+let currentGraphTasks = [];  // 当前显示的任务列表（用于重绘）
+
+/**
+ * 设置图表模式并重绘
+ * @param {string} mode - 模式：combined, importance, urgency, bounty
+ */
+function setGraphMode(mode) {
+    currentGraphMode = mode;
+    
+    // 更新按钮状态
+    document.querySelectorAll('.task-graph-mode-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+    
+    // 重绘图表
+    if (currentGraphTasks.length > 0) {
+        renderTaskGraph(currentGraphTasks);
+    }
+}
 
 /**
  * 渲染任务关系图
  * @param {Array} tasks - 任务列表
  */
 function renderTaskGraph(tasks) {
+    // 保存任务列表供模式切换时重绘
+    currentGraphTasks = tasks;
+    
     const container = document.getElementById('taskGraphContainer');
     const svg = d3.select('#taskGraphSvg');
     
@@ -3030,43 +3053,51 @@ function renderTaskGraph(tasks) {
     function calculateNodeRadius(task) {
         const baseRadius = 20;
         
-        // 重要度倍率: -1→0.5, 0→1, 1→2
-        const importance = task.importance || 0;
-        const importanceMultiplier = importance === 0 ? 1 : 1 + importance * 0.5 + Math.abs(importance) * 0.5;
-        // 简化: importance * 0.75 + 1 (从0.25到1.75)，需要调整为 0.5到2
-        // 正确公式: 0.5 + (importance + 1) * 0.75 = 0.5 + 0.75*importance + 0.75
-        // 当 importance = -1: 0.5, importance = 0: 1.25 (不对)
-        // 应该用: 1 + importance * 0.5 当 importance >= 0; 1 + importance * 0.5 当 importance < 0
-        // -1 → 0.5, 0 → 1, 1 → 1.5 (不对，应该是2)
-        // 正确: 当 importance >= 0: 1 + importance (0→1, 1→2)
-        //       当 importance < 0: 1 + importance * 0.5 (-1→0.5, 0→1)
-        
-        // 紧急度倍率: 同重要度
-        const urgency = task.urgency || 0;
-        
-        // 赏金倍率: 0→1, 200→2, 超过200按200算
-        const bounty = Math.min(Math.max(task.bounty || 0, 0), 200);
-        const bountyMultiplier = bounty === 0 ? 1 : 0.5 + (bounty / 200) * 1.5;
-        
-        // 重要度和紧急度的映射函数
+        // 重要度和紧急度的映射函数: -1→0.5, 0→1, 1→2
         function mapValueToMultiplier(value) {
             if (value === 0) return 1;
             if (value > 0) {
-                // 0→1, 1→2
-                return 1 + value;
+                return 1 + value;  // 0→1, 1→2
             } else {
-                // -1→0.5, 0→1
-                return 1 + value * 0.5;
+                return 1 + value * 0.5;  // -1→0.5, 0→1
             }
         }
         
+        // 赏金映射函数: 0→1, 200→2
+        function mapBountyToMultiplier(bounty) {
+            const clampedBounty = Math.min(Math.max(bounty || 0, 0), 200);
+            if (clampedBounty === 0) return 1;
+            return 0.5 + (clampedBounty / 200) * 1.5;
+        }
+        
+        const importance = task.importance || 0;
+        const urgency = task.urgency || 0;
+        const bounty = task.bounty || 0;
+        
         const impMult = mapValueToMultiplier(importance);
         const urgMult = mapValueToMultiplier(urgency);
+        const bountyMult = mapBountyToMultiplier(bounty);
         
-        // 综合倍率（取三者平均或相乘后开方）
-        const combinedMultiplier = Math.pow(impMult * urgMult * bountyMultiplier, 1/3);
+        // 根据当前模式选择倍率
+        let multiplier;
+        switch (currentGraphMode) {
+            case 'importance':
+                multiplier = impMult;
+                break;
+            case 'urgency':
+                multiplier = urgMult;
+                break;
+            case 'bounty':
+                multiplier = bountyMult;
+                break;
+            case 'combined':
+            default:
+                // 综合倍率（三者几何平均）
+                multiplier = Math.pow(impMult * urgMult * bountyMult, 1/3);
+                break;
+        }
         
-        return baseRadius * combinedMultiplier;
+        return baseRadius * multiplier;
     }
     
     // 构建节点数据
