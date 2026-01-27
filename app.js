@@ -821,6 +821,7 @@ async function openAddTaskForProject(projectId) {    // 关闭项目详情浮层
     document.getElementById('modalTaskBounty').value = '';
     document.getElementById('modalTaskCompleted').value = 'false';
     document.getElementById('taskDependencyDisplay').value = ''; // 清空任务关联显示
+    document.getElementById('modalTaskDescription').value = ''; // 清空详情
     selectedPrerequisites = []; // 清空已选前置任务
 
     // 修改标题为“添加任务”并显示
@@ -1169,6 +1170,7 @@ async function openEditTaskModal(projectId, taskId) {
     document.getElementById('modalTaskCategory').value = task.category || '工作';
     document.getElementById('modalTaskBounty').value = task.bounty || 0;
     document.getElementById('modalTaskCompleted').value = task.completed ? 'true' : 'false';
+    document.getElementById('modalTaskDescription').value = task.description || '';
 
     // 设置任务关联显示
     const dependencyDisplay = document.getElementById('taskDependencyDisplay');
@@ -1228,6 +1230,7 @@ function closeEditTaskModal() {
     document.getElementById('modalTaskBounty').value = '';
     document.getElementById('modalTaskCompleted').value = 'false';
     document.getElementById('taskDependencyDisplay').value = '';
+    document.getElementById('modalTaskDescription').value = '';
     
     // 清空当前编辑状态
     currentEditingTask.projectId = null;
@@ -1333,6 +1336,7 @@ async function confirmAddTask() {
     const category = document.getElementById('modalTaskCategory').value;
     const bounty = parseFloat(document.getElementById('modalTaskBounty').value) || 0;
     const completed = document.getElementById('modalTaskCompleted').value === 'true';
+    const description = document.getElementById('modalTaskDescription').value;
 
     // 验证必填字段
     if (!name) {
@@ -1358,7 +1362,8 @@ async function confirmAddTask() {
                 priority,
                 category,
                 bounty,
-                completed
+                completed,
+                description
             });
         
         if (error) {
@@ -1918,7 +1923,8 @@ function attachTaskAutoSaveListeners() {
         'modalTaskPriority',
         'modalTaskCategory',
         'modalTaskBounty',
-        'modalTaskCompleted'
+        'modalTaskCompleted',
+        'modalTaskDescription'
     ];
     
     // 为每个字段绑定change事件
@@ -1941,6 +1947,9 @@ function attachTaskAutoSaveListeners() {
                     autoSaveTask();
                     updateTaskRelativeTimes();
                 });
+            } else if (field.tagName === 'TEXTAREA') {
+                // textarea（详情输入框）使用防抖版本
+                field.addEventListener('input', debouncedAutoSaveTask);
             } else {
                 // 文本和数字输入框使用防抖版本（避免每个字符都保存）
                 field.addEventListener('input', debouncedAutoSaveTask);
@@ -1971,6 +1980,7 @@ async function autoSaveTask() {
     const category = document.getElementById('modalTaskCategory').value;
     const bounty = parseFloat(document.getElementById('modalTaskBounty').value) || 0;
     const completed = document.getElementById('modalTaskCompleted').value === 'true';
+    const description = document.getElementById('modalTaskDescription').value;
     
     try {
         // 直接更新数据库中的任务
@@ -1987,7 +1997,8 @@ async function autoSaveTask() {
                 priority,
                 category,
                 bounty,
-                completed
+                completed,
+                description
             })
             .eq('id', currentEditingTask.taskId);
         

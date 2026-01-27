@@ -415,6 +415,38 @@ button:hover {
     gap: var(--spacing-xs);
 }
 
+/* 全宽表单项（如详情输入框） */
+.form-item-full {
+    grid-column: 1 / -1;
+    margin-top: var(--spacing-md);
+}
+
+/* 任务详情输入框 */
+.task-description-input {
+    width: 100%;
+    min-height: 120px;
+    max-height: 300px;
+    padding: var(--spacing-md);
+    border: var(--border-width-module) solid var(--border-module);
+    border-radius: var(--radius-base);
+    font-size: var(--font-size-base);
+    font-family: var(--font-family);
+    background: var(--bg-card);
+    color: var(--text-color);
+    resize: vertical;
+    line-height: 1.6;
+}
+
+.task-description-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(255, 204, 0, 0.2);
+}
+
+.task-description-input::placeholder {
+    color: rgba(254, 165, 0, 0.4);
+}
+
 /* 相对时间显示行 - 跨3列 */
 .time-relative-row {
     grid-column: 1 / -1;
