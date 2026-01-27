@@ -544,7 +544,7 @@ button:hover {
     border-color: var(--border-module);
 }
 
-/* ========== 响应式布局 - 小屏幕单列显示 ========== */ */
+/* ========== 响应式布局 - 小屏幕单列显示 ========== */
 @media (max-width: 600px) {
     .form-grid {
         grid-template-columns: 1fr;
@@ -1102,3 +1102,121 @@ input[readonly] {
     color: var(--text-color);
 }
 
+/* ============================================================
+   认证界面样式
+   ============================================================ */
+
+/* 认证容器 */
+.auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - var(--spacing-lg) * 2 - var(--border-width-outer) * 2);
+    padding: var(--spacing-xl);
+}
+
+/* 认证盒子 */
+.auth-box {
+    width: 100%;
+    max-width: 400px;
+    padding: var(--spacing-xl);
+    border: var(--border-width-module) solid var(--border-module);
+    background: var(--bg-card);
+}
+
+/* 认证标题 */
+.auth-title {
+    text-align: center;
+    color: var(--text-primary);
+    font-size: var(--font-size-xxl);
+    margin-bottom: var(--spacing-sm);
+}
+
+/* 认证副标题 */
+.auth-subtitle {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: var(--font-size-base);
+    margin-bottom: var(--spacing-xl);
+}
+
+/* 认证表单 */
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+/* 认证输入框 */
+.auth-input {
+    width: 100%;
+    padding: 12px var(--spacing-md);
+    border: var(--border-width-module) solid var(--border-module);
+    border-radius: var(--radius-base);
+    font-size: var(--font-size-base);
+    background: var(--bg-card);
+    color: var(--text-color);
+    font-family: var(--font-family);
+}
+
+.auth-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(255, 204, 0, 0.2);
+}
+
+/* 认证按钮容器 */
+.auth-buttons {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-md);
+}
+
+.auth-buttons .btn-primary,
+.auth-buttons .btn-secondary {
+    flex: 1;
+    padding: 12px var(--spacing-lg);
+    font-size: var(--font-size-base);
+}
+
+/* 认证错误信息 */
+.auth-error {
+    color: var(--color-danger);
+    text-align: center;
+    font-size: var(--font-size-small);
+    min-height: 20px;
+    margin-top: var(--spacing-sm);
+}
+
+/* 用户信息栏 */
+.user-bar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm) 0;
+    margin-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--border-module);
+}
+
+.user-bar #userEmail {
+    color: var(--text-secondary);
+    font-size: var(--font-size-small);
+}
+
+/* 退出登录按钮 */
+.btn-logout {
+    padding: var(--spacing-xs) var(--spacing-md);
+    background: transparent;
+    border: 1px solid var(--color-danger);
+    color: var(--color-danger);
+    font-size: var(--font-size-small);
+    font-family: var(--font-family);
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.btn-logout:hover {
+    background: var(--color-danger);
+    color: #000;
+}

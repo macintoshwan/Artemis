@@ -9,14 +9,47 @@
     <link rel="stylesheet" href="styles.css?v=20260126">
 </head>
 <body>
-    <h1>Artemis</h1>
+    <!-- ========== 登录/注册界面 ========== -->
+    <div id="authContainer" class="auth-container" style="display: none;">
+        <div class="auth-box">
+            <h1 class="auth-title">Artemis</h1>
+            <p class="auth-subtitle">极简项目管理系统</p>
+            
+            <div class="auth-form">
+                <div class="form-item">
+                    <label for="authEmail">邮箱</label>
+                    <input type="email" id="authEmail" class="auth-input" placeholder="请输入邮箱">
+                </div>
+                <div class="form-item">
+                    <label for="authPassword">密码</label>
+                    <input type="password" id="authPassword" class="auth-input" placeholder="请输入密码（至少6位）">
+                </div>
+                <div class="auth-buttons">
+                    <button class="btn-primary" onclick="signIn()">登录</button>
+                    <button class="btn-secondary" onclick="signUp()">注册</button>
+                </div>
+                <p id="authError" class="auth-error"></p>
+            </div>
+        </div>
+    </div>
 
-    <!-- 上方区域：项目列表容器 -->
-    <div id="projectList" class="project-list"></div>
+    <!-- ========== 主应用界面 ========== -->
+    <div id="mainApp" style="display: none;">
+        <!-- 用户信息栏 -->
+        <div class="user-bar">
+            <span id="userEmail"></span>
+            <button class="btn-logout" onclick="signOut()">退出登录</button>
+        </div>
 
-    <!-- 下方区域：新建项目按钮 -->
-    <div class="create-project-section">
-        <button class="btn-primary btn-create-project" onclick="openCreateProjectModal()">新建项目</button>
+        <h1>Artemis</h1>
+
+        <!-- 上方区域：项目列表容器 -->
+        <div id="projectList" class="project-list"></div>
+
+        <!-- 下方区域：新建项目按钮 -->
+        <div class="create-project-section">
+            <button class="btn-primary btn-create-project" onclick="openCreateProjectModal()">新建项目</button>
+        </div>
     </div>
 
     <!-- ========== 新建项目浮层 ========== -->

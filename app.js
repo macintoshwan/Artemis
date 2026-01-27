@@ -73,6 +73,137 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 // localStorage 存储的键名（保留用于兼容性）
 const STORAGE_KEY = 'projectManagerData';
 
+// ============================================================
+// 用户认证相关
+// ============================================================
+
+// 当前登录用户
+let currentUser = null;
+
+/**
+ * 初始化认证状态监听
+ */
+function setupAuthListener() {
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+        console.log('Auth state changed:', event);
+        currentUser = session?.user || null;
+        
+        if (currentUser) {
+            // 用户已登录，显示主界面
+            showMainApp();
+            renderProjects();
+            setupRealtimeSubscription();
+        } else {
+            // 用户未登录，显示登录界面
+            showAuthUI();
+        }
+    });
+}
+
+/**
+ * 显示登录界面
+ */
+function showAuthUI() {
+    document.getElementById('authContainer').style.display = 'flex';
+    document.getElementById('mainApp').style.display = 'none';
+}
+
+/**
+ * 显示主应用界面
+ */
+function showMainApp() {
+    document.getElementById('authContainer').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    
+    // 更新用户信息显示
+    const userEmailEl = document.getElementById('userEmail');
+    if (userEmailEl && currentUser) {
+        userEmailEl.textContent = currentUser.email;
+    }
+}
+
+/**
+ * 用户注册
+ */
+async function signUp() {
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+    
+    if (!email || !password) {
+        alert('请输入邮箱和密码');
+        return;
+    }
+    
+    if (password.length < 6) {
+        alert('密码至少需要6个字符');
+        return;
+    }
+    
+    try {
+        const { data, error } = await supabaseClient.auth.signUp({
+            email,
+            password
+        });
+        
+        if (error) {
+            alert('注册失败：' + error.message);
+            return;
+        }
+        
+        alert('注册成功！如果启用了邮箱确认，请检查邮箱。');
+    } catch (err) {
+        console.error('Sign up error:', err);
+        alert('注册失败，请重试');
+    }
+}
+
+/**
+ * 用户登录
+ */
+async function signIn() {
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+    
+    if (!email || !password) {
+        alert('请输入邮箱和密码');
+        return;
+    }
+    
+    try {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email,
+            password
+        });
+        
+        if (error) {
+            alert('登录失败：' + error.message);
+            return;
+        }
+        
+        // 登录成功，onAuthStateChange 会自动处理界面切换
+    } catch (err) {
+        console.error('Sign in error:', err);
+        alert('登录失败，请重试');
+    }
+}
+
+/**
+ * 用户登出
+ */
+async function signOut() {
+    try {
+        const { error } = await supabaseClient.auth.signOut();
+        
+        if (error) {
+            console.error('Sign out error:', error);
+        }
+        
+        // 登出成功，onAuthStateChange 会自动处理界面切换
+    } catch (err) {
+        console.error('Sign out error:', err);
+    }
+}
+
 // 启动 Supabase 实时监听
 function setupRealtimeSubscription() {
     // 监听 projects 表变化
@@ -196,10 +327,16 @@ function validateTimeConsistency(prefix, type) {
 // ============================================================
 
 /**
- * 从 Supabase 读取所有项目数据
+ * 从 Supabase 读取当前用户的所有项目数据
  * @returns {Promise<Array>} 项目数组，如果没有数据则返回空数组
  */
 async function getProjects() {
+    // 确保用户已登录
+    if (!currentUser) {
+        console.warn('No user logged in');
+        return [];
+    }
+    
     try {
         const { data, error } = await supabaseClient
             .from('projects')
@@ -207,6 +344,7 @@ async function getProjects() {
                 *,
                 tasks (*)
             `)
+            .eq('user_id', currentUser.id)
             .order('created_at', { ascending: false });
         
         if (error) {
@@ -360,6 +498,12 @@ function resetModalForm() {
  * 验证输入、收集数据、保存到Supabase、刷新列表
  */
 async function confirmCreateProject() {
+    // 检查用户登录状态
+    if (!currentUser) {
+        alert('请先登录');
+        return;
+    }
+    
     // ① 验证：名称不能为空
     const name = document.getElementById('modalProjectName').value.trim();
     if (!name) {
@@ -380,27 +524,41 @@ async function confirmCreateProject() {
     // 赏金转换为数字，如果为空则默认为0
     const bounty = bountyValue ? parseFloat(bountyValue) : 0;
     
-    const projects = await getProjects();
     if (currentEditingProjectId) {
         // 编辑项目模式：更新已有项目
-        const project = projects.find(p => p.id === currentEditingProjectId);
-        if (project) {
-            project.name = name;
-            project.plan_start_date = planStartDate || null;
-            project.plan_end_date = planEndDate || null;
-            project.plan_duration = planDuration;
-            project.actual_start_date = actualStartDate || null;
-            project.actual_end_date = actualEndDate || null;
-            project.actual_duration = actualDuration;
-            project.priority = priority;
-            project.category = category;
-            project.bounty = bounty;
-            await saveProject(project);
+        try {
+            const { error } = await supabaseClient
+                .from('projects')
+                .update({
+                    name,
+                    plan_start_date: planStartDate || null,
+                    plan_end_date: planEndDate || null,
+                    plan_duration: planDuration,
+                    actual_start_date: actualStartDate || null,
+                    actual_end_date: actualEndDate || null,
+                    actual_duration: actualDuration,
+                    priority,
+                    category,
+                    bounty
+                })
+                .eq('id', currentEditingProjectId)
+                .eq('user_id', currentUser.id);  // 确保只能编辑自己的项目
+            
+            if (error) {
+                console.error('Error updating project:', error);
+                alert('更新失败，请重试');
+                return;
+            }
+        } catch (err) {
+            console.error('Error in update:', err);
+            alert('更新失败，请重试');
+            return;
         }
     } else {
-        // 新建项目模式
+        // 新建项目模式 - 添加 user_id
         const newProject = {
             id: Date.now(),
+            user_id: currentUser.id,  // 关键：添加用户ID
             name,
             plan_start_date: planStartDate || null,
             plan_end_date: planEndDate || null,
@@ -410,10 +568,24 @@ async function confirmCreateProject() {
             actual_duration: actualDuration,
             priority,
             category,
-            bounty,
-            tasks: []
+            bounty
         };
-        await saveProject(newProject);
+        
+        try {
+            const { error } = await supabaseClient
+                .from('projects')
+                .insert(newProject);
+            
+            if (error) {
+                console.error('Error creating project:', error);
+                alert('创建失败，请重试');
+                return;
+            }
+        } catch (err) {
+            console.error('Error in create:', err);
+            alert('创建失败，请重试');
+            return;
+        }
     }
     
     // ④ 刷新：隐藏浮层，重新渲染项目列表
@@ -1118,6 +1290,12 @@ async function confirmEditTask() {
  * 确认添加任务
  */
 async function confirmAddTask() {
+    // 检查用户登录状态
+    if (!currentUser) {
+        alert('请先登录');
+        return;
+    }
+    
     // 获取表单数据
     const name = document.getElementById('modalTaskName').value.trim();
     const planStartDate = document.getElementById('modalTaskPlanStartDate').value;
@@ -1138,12 +1316,13 @@ async function confirmAddTask() {
     }
 
     try {
-        // 新建任务直接插入数据库
+        // 新建任务直接插入数据库 - 添加 user_id
         const { error } = await supabaseClient
             .from('tasks')
             .insert({
                 id: Date.now(),
                 project_id: currentEditingTask.projectId,
+                user_id: currentUser.id,  // 关键：添加用户ID
                 name,
                 plan_start_date: planStartDate || null,
                 plan_end_date: planEndDate || null,
@@ -1336,10 +1515,24 @@ function attachTaskValidationListeners() {
 // 页面初始化
 // ============================================================
 
-// 页面加载完成后渲染项目列表
+// 页面加载完成后初始化认证和渲染
 document.addEventListener('DOMContentLoaded', async function() {
-    await renderProjects();
-    setupRealtimeSubscription(); // 启动实时监听
+    // 设置认证状态监听
+    setupAuthListener();
+    
+    // 获取当前会话（检查是否已登录）
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    currentUser = session?.user || null;
+    
+    if (currentUser) {
+        // 已登录：显示主界面
+        showMainApp();
+        await renderProjects();
+        setupRealtimeSubscription();
+    } else {
+        // 未登录：显示登录界面
+        showAuthUI();
+    }
 });
 
 // ============================================================
