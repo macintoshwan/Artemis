@@ -1,6 +1,6 @@
 ﻿/**
  * ============================================================
- * 极简项目管理系统 - JavaScript 逻辑
+ * 项目管理系统 - JavaScript 逻辑
  * ============================================================
  * 
  * 数据结构说明：
@@ -705,38 +705,55 @@ async function renderProjectDetailContent() {
     const titleEl = document.getElementById('projectDetailTitle');
     if (titleEl) titleEl.textContent = project.name;
 
-    // 从任务中汇总计算项目时间和耗时
-    let planStart = null, planEnd = null, planDurationSum = 0;
-    let actualStart = null, actualEnd = null, actualDurationSum = 0;
+    // 优先使用项目本身的时间，如果没有则从任务汇总
+    let planStart = project.plan_start_date ? new Date(project.plan_start_date) : null;
+    let planEnd = project.plan_end_date ? new Date(project.plan_end_date) : null;
+    let planDurationSum = project.plan_duration ? parseFloat(project.plan_duration) : 0;
     
-    if (project.tasks && project.tasks.length > 0) {
+    let actualStart = project.actual_start_date ? new Date(project.actual_start_date) : null;
+    let actualEnd = project.actual_end_date ? new Date(project.actual_end_date) : null;
+    let actualDurationSum = project.actual_duration ? parseFloat(project.actual_duration) : 0;
+    
+    // 如果项目没有时间数据，从任务中汇总
+    if ((!planStart || !planEnd || !planDurationSum) && project.tasks && project.tasks.length > 0) {
+        let taskPlanStart = null, taskPlanEnd = null, taskPlanDuration = 0;
+        let taskActualStart = null, taskActualEnd = null, taskActualDuration = 0;
+        
         project.tasks.forEach(task => {
             // 预计时间
             if (task.plan_start_date) {
                 const taskStart = new Date(task.plan_start_date);
-                if (!planStart || taskStart < planStart) planStart = taskStart;
+                if (!taskPlanStart || taskStart < taskPlanStart) taskPlanStart = taskStart;
             }
             if (task.plan_end_date) {
                 const taskEnd = new Date(task.plan_end_date);
-                if (!planEnd || taskEnd > planEnd) planEnd = taskEnd;
+                if (!taskPlanEnd || taskEnd > taskPlanEnd) taskPlanEnd = taskEnd;
             }
             if (task.plan_duration) {
-                planDurationSum += parseFloat(task.plan_duration);
+                taskPlanDuration += parseFloat(task.plan_duration);
             }
             
             // 实际时间
             if (task.actual_start_date) {
                 const taskStart = new Date(task.actual_start_date);
-                if (!actualStart || taskStart < actualStart) actualStart = taskStart;
+                if (!taskActualStart || taskStart < taskActualStart) taskActualStart = taskStart;
             }
             if (task.actual_end_date) {
                 const taskEnd = new Date(task.actual_end_date);
-                if (!actualEnd || taskEnd > actualEnd) actualEnd = taskEnd;
+                if (!taskActualEnd || taskEnd > taskActualEnd) taskActualEnd = taskEnd;
             }
             if (task.actual_duration) {
-                actualDurationSum += parseFloat(task.actual_duration);
+                taskActualDuration += parseFloat(task.actual_duration);
             }
         });
+        
+        // 用任务汇总填充缺失的项目数据
+        if (!planStart) planStart = taskPlanStart;
+        if (!planEnd) planEnd = taskPlanEnd;
+        if (!planDurationSum) planDurationSum = taskPlanDuration;
+        if (!actualStart) actualStart = taskActualStart;
+        if (!actualEnd) actualEnd = taskActualEnd;
+        if (!actualDurationSum) actualDurationSum = taskActualDuration;
     }
     
     // 格式化显示
