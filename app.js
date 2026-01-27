@@ -3021,12 +3021,64 @@ function renderTaskGraph(tasks) {
     // 设置SVG尺寸
     svg.attr('width', width).attr('height', height);
     
+    /**
+     * 计算小球半径倍率
+     * 重要度 (-1~1) → 倍率 (0.5~2)，0时为1
+     * 紧急度 (-1~1) → 倍率 (0.5~2)，0时为1
+     * 赏金 (0~200) → 倍率 (0.5~2)，0时为1
+     */
+    function calculateNodeRadius(task) {
+        const baseRadius = 20;
+        
+        // 重要度倍率: -1→0.5, 0→1, 1→2
+        const importance = task.importance || 0;
+        const importanceMultiplier = importance === 0 ? 1 : 1 + importance * 0.5 + Math.abs(importance) * 0.5;
+        // 简化: importance * 0.75 + 1 (从0.25到1.75)，需要调整为 0.5到2
+        // 正确公式: 0.5 + (importance + 1) * 0.75 = 0.5 + 0.75*importance + 0.75
+        // 当 importance = -1: 0.5, importance = 0: 1.25 (不对)
+        // 应该用: 1 + importance * 0.5 当 importance >= 0; 1 + importance * 0.5 当 importance < 0
+        // -1 → 0.5, 0 → 1, 1 → 1.5 (不对，应该是2)
+        // 正确: 当 importance >= 0: 1 + importance (0→1, 1→2)
+        //       当 importance < 0: 1 + importance * 0.5 (-1→0.5, 0→1)
+        
+        // 紧急度倍率: 同重要度
+        const urgency = task.urgency || 0;
+        
+        // 赏金倍率: 0→1, 200→2, 超过200按200算
+        const bounty = Math.min(Math.max(task.bounty || 0, 0), 200);
+        const bountyMultiplier = bounty === 0 ? 1 : 0.5 + (bounty / 200) * 1.5;
+        
+        // 重要度和紧急度的映射函数
+        function mapValueToMultiplier(value) {
+            if (value === 0) return 1;
+            if (value > 0) {
+                // 0→1, 1→2
+                return 1 + value;
+            } else {
+                // -1→0.5, 0→1
+                return 1 + value * 0.5;
+            }
+        }
+        
+        const impMult = mapValueToMultiplier(importance);
+        const urgMult = mapValueToMultiplier(urgency);
+        
+        // 综合倍率（取三者平均或相乘后开方）
+        const combinedMultiplier = Math.pow(impMult * urgMult * bountyMultiplier, 1/3);
+        
+        return baseRadius * combinedMultiplier;
+    }
+    
     // 构建节点数据
     const nodes = tasks.map(task => ({
         id: task.id,
         name: task.name,
         completed: task.completed,
-        prerequisites: task.prerequisites || []
+        prerequisites: task.prerequisites || [],
+        importance: task.importance || 0,
+        urgency: task.urgency || 0,
+        bounty: task.bounty || 0,
+        radius: calculateNodeRadius(task)
     }));
     
     // 构建连接数据（从前置任务指向当前任务）
@@ -3049,7 +3101,7 @@ function renderTaskGraph(tasks) {
     svg.append('defs').append('marker')
         .attr('id', 'arrowhead')
         .attr('viewBox', '0 -5 10 10')
-        .attr('refX', 25)
+        .attr('refX', 0)
         .attr('refY', 0)
         .attr('markerWidth', 6)
         .attr('markerHeight', 6)
@@ -3063,7 +3115,7 @@ function renderTaskGraph(tasks) {
         .force('link', d3.forceLink(links).id(d => d.id).distance(80).strength(0.5))
         .force('charge', d3.forceManyBody().strength(-200))
         .force('center', d3.forceCenter(width / 2, height / 2))
-        .force('collision', d3.forceCollide().radius(35));
+        .force('collision', d3.forceCollide().radius(d => d.radius + 5));
     
     // 绘制连接线
     const link = svg.append('g')
@@ -3088,9 +3140,9 @@ function renderTaskGraph(tasks) {
             .on('drag', dragged)
             .on('end', dragEnded));
     
-    // 添加圆形节点
+    // 添加圆形节点（大小根据重要度、紧急度、赏金计算）
     node.append('circle')
-        .attr('r', 20);
+        .attr('r', d => d.radius);
     
     // 添加任务名称
     node.append('text')
@@ -3103,17 +3155,33 @@ function renderTaskGraph(tasks) {
     
     // 力模拟更新
     taskGraphSimulation.on('tick', () => {
-        // 限制节点在边界内
+        // 限制节点在边界内（使用各节点的半径）
         nodes.forEach(d => {
-            d.x = Math.max(25, Math.min(width - 25, d.x));
-            d.y = Math.max(25, Math.min(height - 25, d.y));
+            d.x = Math.max(d.radius, Math.min(width - d.radius, d.x));
+            d.y = Math.max(d.radius, Math.min(height - d.radius, d.y));
         });
         
+        // 计算连接线终点（在目标节点边缘停止，为箭头留出空间）
         link
             .attr('x1', d => d.source.x)
             .attr('y1', d => d.source.y)
-            .attr('x2', d => d.target.x)
-            .attr('y2', d => d.target.y);
+            .attr('x2', d => {
+                const dx = d.target.x - d.source.x;
+                const dy = d.target.y - d.source.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist === 0) return d.target.x;
+                // 箭头偏移量（节点半径 + 箭头大小）
+                const offset = d.target.radius + 5;
+                return d.target.x - (dx / dist) * offset;
+            })
+            .attr('y2', d => {
+                const dx = d.target.x - d.source.x;
+                const dy = d.target.y - d.source.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist === 0) return d.target.y;
+                const offset = d.target.radius + 5;
+                return d.target.y - (dy / dist) * offset;
+            });
         
         node.attr('transform', d => `translate(${d.x},${d.y})`);
     });
