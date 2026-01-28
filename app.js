@@ -683,10 +683,104 @@ function openProjectDetailModal(projectId) {
     renderProjectDetailContent();
 }
 
+// 剩余时间更新定时器
+let timeRemainingTimerId = null;
+
+/**
+ * 格式化剩余时间（精确到秒）
+ */
+function formatTimeRemaining(diffMs) {
+    const isPositive = diffMs > 0;
+    const absDiff = Math.abs(diffMs);
+    
+    const days = Math.floor(absDiff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((absDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((absDiff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((absDiff % (1000 * 60)) / 1000);
+    
+    let text = '';
+    let cssClass = '';
+    
+    if (isPositive) {
+        // 剩余时间
+        if (days > 0) {
+            text = `剩${days}天${hours}时${minutes}分`;
+            cssClass = 'positive';
+        } else if (hours > 0) {
+            text = `剩${hours}时${minutes}分${seconds}秒`;
+            cssClass = 'positive';
+        } else if (minutes > 0) {
+            text = `剩${minutes}分${seconds}秒`;
+            cssClass = minutes < 10 ? 'warning' : 'positive';
+        } else {
+            text = `剩${seconds}秒`;
+            cssClass = 'warning';
+        }
+    } else {
+        // 超时
+        if (days > 0) {
+            text = `超${days}天${hours}时${minutes}分`;
+        } else if (hours > 0) {
+            text = `超${hours}时${minutes}分${seconds}秒`;
+        } else if (minutes > 0) {
+            text = `超${minutes}分${seconds}秒`;
+        } else {
+            text = `超${seconds}秒`;
+        }
+        cssClass = 'negative';
+    }
+    
+    return { text, cssClass };
+}
+
+/**
+ * 更新所有剩余时间显示（只更新文本，不重新渲染DOM）
+ */
+function updateTimeRemainingDisplays() {
+    const elements = document.querySelectorAll('.time-remaining[data-plan-end]');
+    const now = new Date();
+    
+    elements.forEach(el => {
+        const planEnd = new Date(el.dataset.planEnd);
+        const diffMs = planEnd - now;
+        const { text, cssClass } = formatTimeRemaining(diffMs);
+        
+        el.textContent = text;
+        el.className = `time-remaining ${cssClass}`;
+    });
+}
+
+/**
+ * 启动剩余时间更新定时器
+ */
+function startTimeRemainingTimer() {
+    // 先停止已有的定时器
+    stopTimeRemainingTimer();
+    
+    // 立即更新一次
+    updateTimeRemainingDisplays();
+    
+    // 每秒更新一次
+    timeRemainingTimerId = setInterval(updateTimeRemainingDisplays, 1000);
+}
+
+/**
+ * 停止剩余时间更新定时器
+ */
+function stopTimeRemainingTimer() {
+    if (timeRemainingTimerId) {
+        clearInterval(timeRemainingTimerId);
+        timeRemainingTimerId = null;
+    }
+}
+
 /**
  * 关闭项目详情浮层
  */
 function closeProjectDetailModal() {
+    // 停止定时器
+    stopTimeRemainingTimer();
+    
     const modal = document.getElementById('projectDetailModal');
     modal.style.display = 'none';
     currentDetailProjectId = null;
@@ -801,38 +895,10 @@ async function renderProjectDetailContent() {
                     status = 'ready';
                 }
                 
-                // 计算剩余时间（当前时间 - 预计结束时间）
-                let timeRemaining = '';
+                // 剩余时间显示（用 data 属性存储结束时间，由定时器更新）
+                let timeRemainingHtml = '';
                 if (task.plan_end_date && !hasEnded) {
-                    const now = new Date();
-                    const planEnd = new Date(task.plan_end_date);
-                    const diffMs = planEnd - now;
-                    const diffHours = diffMs / (1000 * 60 * 60);
-                    
-                    if (diffHours > 0) {
-                        // 还有时间
-                        if (diffHours >= 24) {
-                            const days = Math.floor(diffHours / 24);
-                            const hours = Math.round(diffHours % 24);
-                            timeRemaining = `<span class="time-remaining positive">剩${days}天${hours}时</span>`;
-                        } else if (diffHours >= 1) {
-                            timeRemaining = `<span class="time-remaining positive">剩${Math.round(diffHours)}时</span>`;
-                        } else {
-                            timeRemaining = `<span class="time-remaining warning">剩${Math.round(diffHours * 60)}分</span>`;
-                        }
-                    } else {
-                        // 已超时
-                        const overHours = Math.abs(diffHours);
-                        if (overHours >= 24) {
-                            const days = Math.floor(overHours / 24);
-                            const hours = Math.round(overHours % 24);
-                            timeRemaining = `<span class="time-remaining negative">超${days}天${hours}时</span>`;
-                        } else if (overHours >= 1) {
-                            timeRemaining = `<span class="time-remaining negative">超${Math.round(overHours)}时</span>`;
-                        } else {
-                            timeRemaining = `<span class="time-remaining negative">超${Math.round(overHours * 60)}分</span>`;
-                        }
-                    }
+                    timeRemainingHtml = `<span class="time-remaining" data-plan-end="${task.plan_end_date}"></span>`;
                 }
                 
                 return `
@@ -844,11 +910,14 @@ async function renderProjectDetailContent() {
                         <button class="task-status-btn ${status === 'done' ? 'active' : ''}" onclick="setTaskStatus(${project.id}, ${task.id}, 'done')">done</button>
                     </div>
                     <span class="task-name ${task.completed ? 'completed' : ''}" id="task-name-${task.id}" onclick="startEditTask(${project.id}, ${task.id})">${escapeHtml(task.name)}</span>
-                    ${timeRemaining}
+                    ${timeRemainingHtml}
                     <button class="btn-danger" onclick="deleteTask(${project.id}, ${task.id})">删除</button>
                 </div>
             `}).join('');
     }
+    
+    // 启动剩余时间更新定时器
+    startTimeRemainingTimer();
 
     // 渲染任务关系图
     renderTaskGraph(project.tasks);
