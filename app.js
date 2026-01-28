@@ -783,17 +783,31 @@ async function renderProjectDetailContent() {
         tasksEl.innerHTML = project.tasks.length === 0
             ? '<div class="task-empty">暂无任务</div>'
             : project.tasks.map(task => {
-                // 判断任务状态：未开始、进行中、已完成
+                // 判断任务状态：backlog, ready, in progress, done
+                // done: 有结束时间
+                // in progress: 有开始时间但没结束时间
+                // ready: 有计划开始时间但没实际开始时间
+                // backlog: 都没有
                 const hasStarted = !!task.actual_start_date;
                 const hasEnded = !!task.actual_end_date;
-                const isInProgress = hasStarted && !hasEnded;
+                const hasPlanned = !!task.plan_start_date;
+                
+                let status = 'backlog';
+                if (hasEnded) {
+                    status = 'done';
+                } else if (hasStarted) {
+                    status = 'in-progress';
+                } else if (hasPlanned) {
+                    status = 'ready';
+                }
                 
                 return `
                 <div class="task-item">
                     <div class="task-status-buttons">
-                        <button class="task-status-btn" onclick="setTaskStart(${project.id}, ${task.id})">开始</button>
-                        <button class="task-status-btn status-progress ${isInProgress ? 'active' : ''}" disabled>进行中</button>
-                        <button class="task-status-btn ${hasEnded ? 'active' : ''}" onclick="setTaskEnd(${project.id}, ${task.id})">完成</button>
+                        <button class="task-status-btn ${status === 'backlog' ? 'active' : ''}" onclick="setTaskStatus(${project.id}, ${task.id}, 'backlog')">backlog</button>
+                        <button class="task-status-btn ${status === 'ready' ? 'active' : ''}" onclick="setTaskStatus(${project.id}, ${task.id}, 'ready')">ready</button>
+                        <button class="task-status-btn status-progress ${status === 'in-progress' ? 'active' : ''}" onclick="setTaskStatus(${project.id}, ${task.id}, 'in-progress')">in progress</button>
+                        <button class="task-status-btn ${status === 'done' ? 'active' : ''}" onclick="setTaskStatus(${project.id}, ${task.id}, 'done')">done</button>
                     </div>
                     <span class="task-name ${task.completed ? 'completed' : ''}" id="task-name-${task.id}" onclick="startEditTask(${project.id}, ${task.id})">${escapeHtml(task.name)}</span>
                     <button class="btn-danger" onclick="deleteTask(${project.id}, ${task.id})">删除</button>
@@ -1106,73 +1120,79 @@ async function toggleTask(projectId, taskId) {
 }
 
 /**
- * 设置任务开始时间为当前时间（重置为进行中状态）
+ * 设置任务状态
  * @param {number} projectId - 项目ID
  * @param {number} taskId - 任务ID
+ * @param {string} status - 状态：'backlog', 'ready', 'in-progress', 'done'
  */
-async function setTaskStart(projectId, taskId) {
+async function setTaskStatus(projectId, taskId, status) {
     try {
         const now = new Date().toISOString();
+        let updateData = {};
         
-        // 设置开始时间，同时清除结束时间和完成状态，重置为进行中
-        const { error: updateError } = await supabaseClient
-            .from('tasks')
-            .update({ 
-                actual_start_date: now,
-                actual_end_date: null,
-                actual_duration: null,
-                completed: false
-            })
-            .eq('id', taskId);
-        
-        if (updateError) {
-            console.error('Error updating task start:', updateError);
-            return;
-        }
-        
-        await renderProjects();
-        renderProjectDetailContent();
-    } catch (err) {
-        console.error('Error in setTaskStart:', err);
-    }
-}
-
-/**
- * 设置任务结束时间为当前时间，并标记为完成
- * @param {number} projectId - 项目ID
- * @param {number} taskId - 任务ID
- */
-async function setTaskEnd(projectId, taskId) {
-    try {
-        const now = new Date().toISOString();
-        
-        // 获取任务开始时间以计算实际耗时
-        const { data: task, error: fetchError } = await supabaseClient
-            .from('tasks')
-            .select('actual_start_date')
-            .eq('id', taskId)
-            .single();
-        
-        if (fetchError) {
-            console.error('Error fetching task:', fetchError);
-            return;
-        }
-        
-        // 计算实际耗时（小时）
-        let actualDuration = null;
-        if (task.actual_start_date) {
-            const startTime = new Date(task.actual_start_date);
-            const endTime = new Date(now);
-            actualDuration = (endTime - startTime) / (1000 * 60 * 60); // 转换为小时
-            actualDuration = Math.round(actualDuration * 100) / 100; // 保留两位小数
-        }
-        
-        const updateData = { 
-            actual_end_date: now,
-            completed: true
-        };
-        if (actualDuration !== null) {
-            updateData.actual_duration = actualDuration;
+        switch (status) {
+            case 'backlog':
+                // 清除所有实际时间和计划时间，重置为初始状态
+                updateData = {
+                    plan_start_date: null,
+                    actual_start_date: null,
+                    actual_end_date: null,
+                    actual_duration: null,
+                    completed: false
+                };
+                break;
+                
+            case 'ready':
+                // 设置计划开始时间（如果没有的话），清除实际时间
+                updateData = {
+                    plan_start_date: now,
+                    actual_start_date: null,
+                    actual_end_date: null,
+                    actual_duration: null,
+                    completed: false
+                };
+                break;
+                
+            case 'in-progress':
+                // 设置实际开始时间，清除结束时间
+                updateData = {
+                    actual_start_date: now,
+                    actual_end_date: null,
+                    actual_duration: null,
+                    completed: false
+                };
+                break;
+                
+            case 'done':
+                // 设置实际结束时间，计算耗时
+                const { data: task, error: fetchError } = await supabaseClient
+                    .from('tasks')
+                    .select('actual_start_date')
+                    .eq('id', taskId)
+                    .single();
+                
+                if (fetchError) {
+                    console.error('Error fetching task:', fetchError);
+                    return;
+                }
+                
+                // 计算实际耗时（小时）
+                let actualDuration = null;
+                if (task.actual_start_date) {
+                    const startTime = new Date(task.actual_start_date);
+                    const endTime = new Date(now);
+                    actualDuration = (endTime - startTime) / (1000 * 60 * 60);
+                    actualDuration = Math.round(actualDuration * 100) / 100;
+                }
+                
+                updateData = {
+                    actual_end_date: now,
+                    completed: true
+                };
+                if (actualDuration !== null) {
+                    updateData.actual_duration = actualDuration;
+                }
+                break;
         }
         
         const { error: updateError } = await supabaseClient
@@ -1181,14 +1201,14 @@ async function setTaskEnd(projectId, taskId) {
             .eq('id', taskId);
         
         if (updateError) {
-            console.error('Error updating task end:', updateError);
+            console.error('Error updating task status:', updateError);
             return;
         }
         
         await renderProjects();
         renderProjectDetailContent();
     } catch (err) {
-        console.error('Error in setTaskEnd:', err);
+        console.error('Error in setTaskStatus:', err);
     }
 }
 

@@ -283,13 +283,13 @@ button:hover {
 /* 任务状态按钮组 */
 .task-status-buttons {
     display: flex;
-    gap: 2px;
+    gap: 1px;
     flex-shrink: 0;
 }
 
 .task-status-btn {
-    padding: 2px 6px;
-    font-size: 12px;
+    padding: 2px 5px;
+    font-size: 11px;
     border: 1px solid var(--border-module);
     background: var(--bg-page);
     color: var(--text-primary);
@@ -298,13 +298,8 @@ button:hover {
     transition: all 0.15s ease;
 }
 
-.task-status-btn:hover:not(:disabled) {
+.task-status-btn:hover {
     background: var(--bg-module);
-}
-
-.task-status-btn:disabled {
-    cursor: default;
-    opacity: 0.8;
 }
 
 .task-status-btn.active {
