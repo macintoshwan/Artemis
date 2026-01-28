@@ -328,21 +328,26 @@ button:hover {
 
 /* 任务剩余时间提示 */
 .time-remaining {
-    font-size: 11px;
-    padding: 1px 4px;
+    font-size: var(--font-size-base);
+    padding: 2px 8px;
     border-radius: var(--radius-small);
     white-space: nowrap;
     flex-shrink: 0;
+    color: #f57c00;
+    background: transparent;
+    border: 1px solid #f57c00;
 }
 
 .time-remaining.positive {
-    color: #2e7d32;
-    background: #e8f5e9;
+    color: #f57c00;
+    background: transparent;
+    border: 1px solid #f57c00;
 }
 
 .time-remaining.warning {
     color: #f57c00;
-    background: #fff3e0;
+    background: transparent;
+    border: 1px solid #f57c00;
 }
 
 .time-remaining.negative {
