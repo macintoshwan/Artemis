@@ -49,6 +49,13 @@
     --color-danger: #ff4444;         /* 删除按钮 - 红色 */
     --color-secondary: #444444;      /* 次要按钮 - 深灰 */
 
+    /* ========== 功能性颜色（方便单独修改） ========== */
+    --color-time-remaining: #f57c00; /* 剩余时间/超时 - 橙色 */
+    --color-selected: #ff4444;       /* 选中项背景 - 红色 */
+    --color-selected-text: #ffffff;  /* 选中项文字 - 白色 */
+    --color-hover-danger: #ff0000;   /* 危险悬停 - 纯红 */
+    --color-on-primary: #000000;     /* 主色调上的文字 - 黑色 */
+
     /* ========== 背景色 ========== */
     --bg-page: #000000;              /* 页面背景 */
     --bg-card: #000000;              /* 卡片背景 */
@@ -179,7 +186,7 @@ button:hover {
 /* 主要按钮 - 青绿色底+黄色描边+黑字 */
 .btn-primary {
     background: var(--color-cyan);
-    color: #000000;
+    color: var(--color-on-primary);
     border-color: var(--border-module);
 }
 
@@ -195,7 +202,7 @@ button:hover {
 /* 成功按钮 - 青色背景+黑色文字 */
 .btn-success {
     background: var(--color-cyan);
-    color: #000000;
+    color: var(--color-on-primary);
     border-color: var(--border-module);
     padding: var(--spacing-xs) var(--spacing-md);
 }
@@ -340,27 +347,27 @@ button:hover {
     border-radius: var(--radius-small);
     white-space: nowrap;
     flex-shrink: 0;
-    color: #f57c00;
+    color: var(--color-time-remaining);
     background: transparent;
-    border: 1px solid #f57c00;
+    border: 1px solid var(--color-time-remaining);
 }
 
 .time-remaining.positive {
-    color: #f57c00;
+    color: var(--color-time-remaining);
     background: transparent;
-    border: 1px solid #f57c00;
+    border: 1px solid var(--color-time-remaining);
 }
 
 .time-remaining.warning {
-    color: #f57c00;
+    color: var(--color-time-remaining);
     background: transparent;
-    border: 1px solid #f57c00;
+    border: 1px solid var(--color-time-remaining);
 }
 
 .time-remaining.negative {
-    color: #f57c00;
+    color: var(--color-time-remaining);
     background: transparent;
-    border: 1px solid #f57c00;
+    border: 1px solid var(--color-time-remaining);
 }
 
 /* 任务名称编辑输入框 */
@@ -585,7 +592,7 @@ button:hover {
 
 .fix-btn:not(:disabled):hover {
     background-color: var(--text-color);
-    color: #000000;
+    color: var(--color-on-primary);
 }
 
 /* 表单标签 - 黄色文字 */
@@ -750,9 +757,9 @@ input[readonly] {
 }
 
 .bounty-option.selected {
-    background: #ff4444;
-    color: #ffffff;
-    border: 2px solid #ff4444;
+    background: var(--color-selected);
+    color: var(--color-selected-text);
+    border: 2px solid var(--color-selected);
     font-weight: 600;
     box-shadow: 0 0 8px rgba(255, 68, 68, 0.4);
 }
@@ -861,16 +868,16 @@ input[readonly] {
 
 /* 选中的选项 */
 .picker-item.selected {
-    background: #ff4444;
-    color: #ffffff;
-    border: 2px solid #ff4444;
+    background: var(--color-selected);
+    color: var(--color-selected-text);
+    border: 2px solid var(--color-selected);
     font-weight: 600;
     box-shadow: 0 0 8px rgba(255, 68, 68, 0.4);
 }
 
 /* 当前时刻选项 */
 .picker-item.current {
-    color: #ffffff;
+    color: var(--color-selected-text);
 }
 
 /* 相对时间显示框 */
@@ -943,7 +950,7 @@ input[readonly] {
 }
 
 .prerequisite-tag .remove-btn:hover {
-    color: #ff0000;
+    color: var(--color-hover-danger);
 }
 
 /* 前置任务选择列表 */
@@ -1059,7 +1066,7 @@ input[readonly] {
 
 .task-graph-mode-btn.active {
     background: var(--color-primary);
-    color: #000;
+    color: var(--color-on-primary);
     border-color: var(--color-primary);
 }
 
@@ -1109,7 +1116,7 @@ input[readonly] {
 
 /* 任务名称标签 */
 .task-node text {
-    fill: #000000;
+    fill: var(--color-on-primary);
     font-size: 11px;
     font-weight: 600;
     text-anchor: middle;
@@ -1360,5 +1367,5 @@ input[readonly] {
 
 .btn-logout:hover {
     background: var(--color-danger);
-    color: #000;
+    color: var(--color-on-primary);
 }
