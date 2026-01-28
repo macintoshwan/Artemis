@@ -236,6 +236,7 @@ button:hover {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: var(--spacing-md);
     margin-bottom: var(--spacing-md);
 }
 
@@ -244,6 +245,12 @@ button:hover {
     font-size: var(--font-size-xl);
     font-weight: 600;
     color: var(--text-on-module);
+    flex: 1;
+}
+
+/* 项目卡片上的剩余时间 */
+.project-header .time-remaining {
+    flex-shrink: 0;
 }
 
 /* 项目标题编辑输入框 */

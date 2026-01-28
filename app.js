@@ -751,7 +751,7 @@ function updateTimeRemainingDisplays() {
 }
 
 /**
- * 启动剩余时间更新定时器
+ * 启动剩余时间更新定时器（任务详情页）
  */
 function startTimeRemainingTimer() {
     // 先停止已有的定时器
@@ -772,6 +772,50 @@ function stopTimeRemainingTimer() {
         clearInterval(timeRemainingTimerId);
         timeRemainingTimerId = null;
     }
+}
+
+// 项目列表时间更新定时器
+let projectTimeTimerId = null;
+
+/**
+ * 启动项目列表时间更新定时器
+ */
+function startProjectTimeTimer() {
+    // 先停止已有的定时器
+    stopProjectTimeTimer();
+    
+    // 立即更新一次
+    updateProjectTimeDisplays();
+    
+    // 每秒更新一次
+    projectTimeTimerId = setInterval(updateProjectTimeDisplays, 1000);
+}
+
+/**
+ * 停止项目列表时间更新定时器
+ */
+function stopProjectTimeTimer() {
+    if (projectTimeTimerId) {
+        clearInterval(projectTimeTimerId);
+        projectTimeTimerId = null;
+    }
+}
+
+/**
+ * 更新项目列表的剩余时间显示
+ */
+function updateProjectTimeDisplays() {
+    const elements = document.querySelectorAll('.time-remaining.project-time[data-plan-end]');
+    const now = new Date();
+    
+    elements.forEach(el => {
+        const planEnd = new Date(el.dataset.planEnd);
+        const diffMs = planEnd - now;
+        const { text, cssClass } = formatTimeRemaining(diffMs);
+        
+        el.textContent = text;
+        el.className = `time-remaining project-time ${cssClass}`;
+    });
 }
 
 /**
@@ -1666,18 +1710,52 @@ async function renderProjects() {
     }
 
     // 生成项目列表 HTML（Dashboard 仅显示项目，不显示任务）
-    container.innerHTML = projects.map(project => `
+    container.innerHTML = projects.map(project => {
+        // 计算项目的预计结束时间（优先项目本身，其次从任务汇总）
+        let planEndDate = null;
+        let isCompleted = false;
+        
+        if (project.plan_end_date) {
+            planEndDate = new Date(project.plan_end_date);
+        } else if (project.tasks && project.tasks.length > 0) {
+            // 从任务中找最晚的预计结束时间
+            project.tasks.forEach(task => {
+                if (task.plan_end_date) {
+                    const taskEnd = new Date(task.plan_end_date);
+                    if (!planEndDate || taskEnd > planEndDate) {
+                        planEndDate = taskEnd;
+                    }
+                }
+            });
+        }
+        
+        // 检查项目是否已完成（所有任务都完成了）
+        if (project.tasks && project.tasks.length > 0) {
+            isCompleted = project.tasks.every(task => task.completed);
+        }
+        
+        // 生成剩余时间HTML
+        let timeRemainingHtml = '';
+        if (planEndDate && !isCompleted) {
+            timeRemainingHtml = `<span class="time-remaining project-time" data-plan-end="${planEndDate.toISOString()}"></span>`;
+        }
+        
+        return `
         <div class="project-card" onclick="openProjectDetailModal(${project.id})">
             <div class="project-header">
                 <span class="project-title" id="project-title-${project.id}" ondblclick="event.stopPropagation(); startEditProject(${project.id})">
                     ${escapeHtml(project.name)}
                 </span>
+                ${timeRemainingHtml}
                 <div class="project-actions" onclick="event.stopPropagation();">
                     <button class="btn-danger" onclick="deleteProject(${project.id})">删除</button>
                 </div>
             </div>
         </div>
-    `).join('');
+    `}).join('');
+    
+    // 启动项目列表的时间更新
+    startProjectTimeTimer();
 }
 
 // ============================================================
