@@ -346,8 +346,9 @@ button:hover {
 }
 
 .time-remaining.negative {
-    color: #c62828;
-    background: #ffebee;
+    color: #f57c00;
+    background: transparent;
+    border: 1px solid #f57c00;
 }
 
 /* 任务名称编辑输入框 */
