@@ -801,6 +801,40 @@ async function renderProjectDetailContent() {
                     status = 'ready';
                 }
                 
+                // 计算剩余时间（当前时间 - 预计结束时间）
+                let timeRemaining = '';
+                if (task.plan_end_date && !hasEnded) {
+                    const now = new Date();
+                    const planEnd = new Date(task.plan_end_date);
+                    const diffMs = planEnd - now;
+                    const diffHours = diffMs / (1000 * 60 * 60);
+                    
+                    if (diffHours > 0) {
+                        // 还有时间
+                        if (diffHours >= 24) {
+                            const days = Math.floor(diffHours / 24);
+                            const hours = Math.round(diffHours % 24);
+                            timeRemaining = `<span class="time-remaining positive">剩${days}天${hours}时</span>`;
+                        } else if (diffHours >= 1) {
+                            timeRemaining = `<span class="time-remaining positive">剩${Math.round(diffHours)}时</span>`;
+                        } else {
+                            timeRemaining = `<span class="time-remaining warning">剩${Math.round(diffHours * 60)}分</span>`;
+                        }
+                    } else {
+                        // 已超时
+                        const overHours = Math.abs(diffHours);
+                        if (overHours >= 24) {
+                            const days = Math.floor(overHours / 24);
+                            const hours = Math.round(overHours % 24);
+                            timeRemaining = `<span class="time-remaining negative">超${days}天${hours}时</span>`;
+                        } else if (overHours >= 1) {
+                            timeRemaining = `<span class="time-remaining negative">超${Math.round(overHours)}时</span>`;
+                        } else {
+                            timeRemaining = `<span class="time-remaining negative">超${Math.round(overHours * 60)}分</span>`;
+                        }
+                    }
+                }
+                
                 return `
                 <div class="task-item">
                     <div class="task-status-buttons">
@@ -810,6 +844,7 @@ async function renderProjectDetailContent() {
                         <button class="task-status-btn ${status === 'done' ? 'active' : ''}" onclick="setTaskStatus(${project.id}, ${task.id}, 'done')">done</button>
                     </div>
                     <span class="task-name ${task.completed ? 'completed' : ''}" id="task-name-${task.id}" onclick="startEditTask(${project.id}, ${task.id})">${escapeHtml(task.name)}</span>
+                    ${timeRemaining}
                     <button class="btn-danger" onclick="deleteTask(${project.id}, ${task.id})">删除</button>
                 </div>
             `}).join('');

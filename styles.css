@@ -326,6 +326,30 @@ button:hover {
     color: var(--text-disabled);
 }
 
+/* 任务剩余时间提示 */
+.time-remaining {
+    font-size: 11px;
+    padding: 1px 4px;
+    border-radius: var(--radius-small);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.time-remaining.positive {
+    color: #2e7d32;
+    background: #e8f5e9;
+}
+
+.time-remaining.warning {
+    color: #f57c00;
+    background: #fff3e0;
+}
+
+.time-remaining.negative {
+    color: #c62828;
+    background: #ffebee;
+}
+
 /* 任务名称编辑输入框 */
 .task-name-input {
     flex: 1;
