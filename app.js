@@ -1,6 +1,6 @@
-/**
+﻿/**
  * ============================================================
- * 极简项目管理系统 - JavaScript 逻辑
+ * 项目管理系统 - JavaScript 逻辑
  * ============================================================
  * 
  * 数据结构说明：
@@ -39,11 +39,221 @@
  */
 
 // ============================================================
+// 工具函数
+// ============================================================
+
+/**
+ * 防抖函数：在多次触发时，只在最后一次停止触发 wait 毫秒后执行
+ * @param {Function} func - 要防抖的函数
+ * @param {number} wait - 等待时间（毫秒）
+ * @returns {Function} - 防抖后的函数
+ */
+function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            func.apply(context, args);
+        }, wait);
+    };
+}
+
+// ============================================================
 // 配置常量
 // ============================================================
 
-// localStorage 存储的键名
+// Supabase 配置
+const SUPABASE_URL = 'https://eidkzutoxsrzqrezldwz.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpZGt6dXRveHNyenFyZXpsZHd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwMTgxNTAsImV4cCI6MjA4NDU5NDE1MH0.HspWBpjYNsaiL7kRvQB53d3rK2foQMTM9AUyLzhaZ-k';
+
+// 初始化 Supabase 客户端
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// localStorage 存储的键名（保留用于兼容性）
 const STORAGE_KEY = 'projectManagerData';
+
+// ============================================================
+// 用户认证相关
+// ============================================================
+
+// 当前登录用户
+let currentUser = null;
+
+/**
+ * 初始化认证状态监听
+ */
+function setupAuthListener() {
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+        console.log('Auth state changed:', event);
+        currentUser = session?.user || null;
+        
+        if (currentUser) {
+            // 用户已登录，显示主界面
+            showMainApp();
+            renderProjects();
+            setupRealtimeSubscription();
+        } else {
+            // 用户未登录，显示登录界面
+            showAuthUI();
+        }
+    });
+}
+
+/**
+ * 显示登录界面
+ */
+function showAuthUI() {
+    document.getElementById('authContainer').style.display = 'flex';
+    document.getElementById('mainApp').style.display = 'none';
+}
+
+/**
+ * 显示主应用界面
+ */
+function showMainApp() {
+    document.getElementById('authContainer').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    
+    // 更新用户信息显示
+    const userEmailEl = document.getElementById('userEmail');
+    if (userEmailEl && currentUser) {
+        userEmailEl.textContent = currentUser.email;
+    }
+}
+
+/**
+ * 用户注册
+ */
+async function signUp() {
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+    
+    if (!email || !password) {
+        alert('请输入邮箱和密码');
+        return;
+    }
+    
+    if (password.length < 6) {
+        alert('密码至少需要6个字符');
+        return;
+    }
+    
+    try {
+        const { data, error } = await supabaseClient.auth.signUp({
+            email,
+            password
+        });
+        
+        if (error) {
+            alert('注册失败：' + error.message);
+            return;
+        }
+        
+        alert('注册成功！如果启用了邮箱确认，请检查邮箱。');
+    } catch (err) {
+        console.error('Sign up error:', err);
+        alert('注册失败，请重试');
+    }
+}
+
+/**
+ * 用户登录
+ */
+async function signIn() {
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+    
+    if (!email || !password) {
+        alert('请输入邮箱和密码');
+        return;
+    }
+    
+    try {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email,
+            password
+        });
+        
+        if (error) {
+            alert('登录失败：' + error.message);
+            return;
+        }
+        
+        // 登录成功，onAuthStateChange 会自动处理界面切换
+    } catch (err) {
+        console.error('Sign in error:', err);
+        alert('登录失败，请重试');
+    }
+}
+
+/**
+ * 用户登出
+ */
+async function signOut() {
+    try {
+        const { error } = await supabaseClient.auth.signOut();
+        
+        if (error) {
+            console.error('Sign out error:', error);
+        }
+        
+        // 登出成功，onAuthStateChange 会自动处理界面切换
+    } catch (err) {
+        console.error('Sign out error:', err);
+    }
+}
+
+// 启动 Supabase 实时监听
+function setupRealtimeSubscription() {
+    // 监听 projects 表变化
+    supabaseClient
+        .channel('projects-channel')
+        .on('postgres_changes', 
+            { event: '*', schema: 'public', table: 'projects' },
+            async (payload) => {
+                console.log('Project changed:', payload);
+                await renderProjects();
+                if (currentDetailProjectId) {
+                    await renderProjectDetailContent();
+                }
+            }
+        )
+        .subscribe((status) => {
+            console.log('Projects channel status:', status);
+            // 如果断线，5秒后重连
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                console.log('Reconnecting projects channel in 5 seconds...');
+                setTimeout(() => {
+                    setupRealtimeSubscription();
+                }, 5000);
+            }
+        });
+    
+    // 监听 tasks 表变化
+    supabaseClient
+        .channel('tasks-channel')
+        .on('postgres_changes',
+            { event: '*', schema: 'public', table: 'tasks' },
+            async (payload) => {
+                console.log('Task changed:', payload);
+                await renderProjects();
+                if (currentDetailProjectId) {
+                    await renderProjectDetailContent();
+                }
+            }
+        )
+        .subscribe((status) => {
+            console.log('Tasks channel status:', status);
+            // 如果断线，5秒后重连
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                console.log('Reconnecting tasks channel in 5 seconds...');
+                setTimeout(() => {
+                    setupRealtimeSubscription();
+                }, 5000);
+            }
+        });
+}
 
 // ============================================================
 // 时间验证辅助函数
@@ -117,23 +327,88 @@ function validateTimeConsistency(prefix, type) {
 // ============================================================
 
 /**
- * 从 localStorage 读取所有项目数据
- * @returns {Array} 项目数组，如果没有数据则返回空数组
+ * 从 Supabase 读取当前用户的所有项目数据
+ * @returns {Promise<Array>} 项目数组，如果没有数据则返回空数组
  */
-function getProjects() {
-    // 从 localStorage 获取 JSON 字符串
-    const data = localStorage.getItem(STORAGE_KEY);
-    // 如果有数据，解析为对象；否则返回空数组
-    return data ? JSON.parse(data) : [];
+async function getProjects() {
+    // 确保用户已登录
+    if (!currentUser) {
+        console.warn('No user logged in');
+        return [];
+    }
+    
+    try {
+        const { data, error } = await supabaseClient
+            .from('projects')
+            .select(`
+                *,
+                tasks (*)
+            `)
+            .eq('user_id', currentUser.id)
+            .order('created_at', { ascending: false });
+        
+        if (error) {
+            console.error('Error loading projects:', error);
+            return [];
+        }
+        
+        return data || [];
+    } catch (err) {
+        console.error('Error fetching projects:', err);
+        return [];
+    }
 }
 
 /**
- * 将项目数据保存到 localStorage
+ * 保存单个项目到 Supabase
+ * @param {Object} project - 要保存的项目对象
+ */
+async function saveProject(project) {
+    try {
+        // 准备项目数据（不包含tasks）
+        const { tasks, ...projectData } = project;
+        
+        // 保存或更新项目
+        const { data: savedProject, error: projectError } = await supabaseClient
+            .from('projects')
+            .upsert(projectData)
+            .select()
+            .single();
+        
+        if (projectError) {
+            console.error('Error saving project:', projectError);
+            return;
+        }
+        
+        // 如果有任务，保存任务
+        if (tasks && tasks.length > 0) {
+            // 为每个任务添加 project_id
+            const tasksWithProjectId = tasks.map(task => ({
+                ...task,
+                project_id: savedProject.id
+            }));
+            
+            const { error: tasksError } = await supabaseClient
+                .from('tasks')
+                .upsert(tasksWithProjectId);
+            
+            if (tasksError) {
+                console.error('Error saving tasks:', tasksError);
+            }
+        }
+    } catch (err) {
+        console.error('Error in saveProject:', err);
+    }
+}
+
+/**
+ * 保存多个项目到 Supabase（兼容旧代码）
  * @param {Array} projects - 要保存的项目数组
  */
-function saveProjects(projects) {
-    // 将对象转换为 JSON 字符串存储
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+async function saveProjects(projects) {
+    for (const project of projects) {
+        await saveProject(project);
+    }
 }
 
 // ============================================================
@@ -220,9 +495,15 @@ function resetModalForm() {
 
 /**
  * 确认创建项目
- * 验证输入、收集数据、保存到localStorage、刷新列表
+ * 验证输入、收集数据、保存到Supabase、刷新列表
  */
-function confirmCreateProject() {
+async function confirmCreateProject() {
+    // 检查用户登录状态
+    if (!currentUser) {
+        alert('请先登录');
+        return;
+    }
+    
     // ① 验证：名称不能为空
     const name = document.getElementById('modalProjectName').value.trim();
     if (!name) {
@@ -243,46 +524,73 @@ function confirmCreateProject() {
     // 赏金转换为数字，如果为空则默认为0
     const bounty = bountyValue ? parseFloat(bountyValue) : 0;
     
-    const projects = getProjects();
     if (currentEditingProjectId) {
         // 编辑项目模式：更新已有项目
-        const project = projects.find(p => p.id === currentEditingProjectId);
-        if (project) {
-            project.name = name;
-            project.planStartDate = planStartDate;
-            project.planEndDate = planEndDate;
-            project.planDuration = planDuration;
-            project.actualStartDate = actualStartDate;
-            project.actualEndDate = actualEndDate;
-            project.actualDuration = actualDuration;
-            project.priority = priority;
-            project.category = category;
-            project.bounty = bounty;
-            saveProjects(projects);
+        try {
+            const { error } = await supabaseClient
+                .from('projects')
+                .update({
+                    name,
+                    plan_start_date: planStartDate || null,
+                    plan_end_date: planEndDate || null,
+                    plan_duration: planDuration,
+                    actual_start_date: actualStartDate || null,
+                    actual_end_date: actualEndDate || null,
+                    actual_duration: actualDuration,
+                    priority,
+                    category,
+                    bounty
+                })
+                .eq('id', currentEditingProjectId)
+                .eq('user_id', currentUser.id);  // 确保只能编辑自己的项目
+            
+            if (error) {
+                console.error('Error updating project:', error);
+                alert('更新失败，请重试');
+                return;
+            }
+        } catch (err) {
+            console.error('Error in update:', err);
+            alert('更新失败，请重试');
+            return;
         }
     } else {
-        // 新建项目模式
+        // 新建项目模式 - 添加 user_id
         const newProject = {
             id: Date.now(),
+            user_id: currentUser.id,  // 关键：添加用户ID
             name,
-            planStartDate,
-            planEndDate,
-            planDuration,
-            actualStartDate,
-            actualEndDate,
-            actualDuration,
+            plan_start_date: planStartDate || null,
+            plan_end_date: planEndDate || null,
+            plan_duration: planDuration,
+            actual_start_date: actualStartDate || null,
+            actual_end_date: actualEndDate || null,
+            actual_duration: actualDuration,
             priority,
             category,
-            bounty,
-            tasks: []
+            bounty
         };
-        projects.push(newProject);
-        saveProjects(projects);
+        
+        try {
+            const { error } = await supabaseClient
+                .from('projects')
+                .insert(newProject);
+            
+            if (error) {
+                console.error('Error creating project:', error);
+                alert('创建失败，请重试');
+                return;
+            }
+        } catch (err) {
+            console.error('Error in create:', err);
+            alert('创建失败，请重试');
+            return;
+        }
     }
     
     // ④ 刷新：隐藏浮层，重新渲染项目列表
     closeCreateProjectModal();
-    renderProjects();
+    await renderProjects();
     
     // ⑤ 清空：下次打开时表单会被resetModalForm()重置
 }
@@ -297,12 +605,17 @@ let currentEditingProjectId = null;
 // 当前详情浮层的项目ID（null 表示未打开）
 let currentDetailProjectId = null;
 
+// 任务依赖关系相关变量
+let currentEditingTaskId = null;        // 当前正在编辑的任务ID
+let currentEditingTaskProjectId = null; // 当前正在编辑的任务所属项目ID
+let selectedPrerequisites = [];         // 当前选择的前置任务ID列表
+
 /**
  * 打开编辑项目浮层（复用新建项目浮层）
  * @param {number} projectId 
  */
-function openEditProjectModal(projectId) {
-    const projects = getProjects();
+async function openEditProjectModal(projectId) {
+    const projects = await getProjects();
     const project = projects.find(p => p.id === projectId);
     if (!project) return;
 
@@ -322,21 +635,21 @@ function openEditProjectModal(projectId) {
         window._returnToProjectDetailId = null;
     }
 
-    // 填充表单
+    // 填充表单（映射数据库字段名）
     document.getElementById('modalProjectName').value = project.name || '';
-    document.getElementById('modalPlanStartDate').value = project.planStartDate || '';
-    document.getElementById('modalPlanEndDate').value = project.planEndDate || '';
+    document.getElementById('modalPlanStartDate').value = project.plan_start_date || '';
+    document.getElementById('modalPlanEndDate').value = project.plan_end_date || '';
     
     const planDurationField = document.getElementById('modalPlanDuration');
-    const planDuration = project.planDuration ?? '';
+    const planDuration = project.plan_duration ?? '';
     planDurationField.setAttribute('data-hours', planDuration);
     planDurationField.value = planDuration ? formatDuration(planDuration) : '';
     
-    document.getElementById('modalActualStartDate').value = project.actualStartDate || '';
-    document.getElementById('modalActualEndDate').value = project.actualEndDate || '';
+    document.getElementById('modalActualStartDate').value = project.actual_start_date || '';
+    document.getElementById('modalActualEndDate').value = project.actual_end_date || '';
     
     const actualDurationField = document.getElementById('modalActualDuration');
-    const actualDuration = project.actualDuration ?? '';
+    const actualDuration = project.actual_duration ?? '';
     actualDurationField.setAttribute('data-hours', actualDuration);
     actualDurationField.value = actualDuration ? formatDuration(actualDuration) : '';
     
@@ -370,10 +683,148 @@ function openProjectDetailModal(projectId) {
     renderProjectDetailContent();
 }
 
+// 剩余时间更新定时器
+let timeRemainingTimerId = null;
+
+/**
+ * 格式化剩余时间（精确到秒）
+ */
+function formatTimeRemaining(diffMs) {
+    const isPositive = diffMs > 0;
+    const absDiff = Math.abs(diffMs);
+    
+    const days = Math.floor(absDiff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((absDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((absDiff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((absDiff % (1000 * 60)) / 1000);
+    
+    let text = '';
+    let cssClass = '';
+    
+    if (isPositive) {
+        // 剩余时间
+        if (days > 0) {
+            text = `剩${days}天${hours}时${minutes}分`;
+            cssClass = 'positive';
+        } else if (hours > 0) {
+            text = `剩${hours}时${minutes}分${seconds}秒`;
+            cssClass = 'positive';
+        } else if (minutes > 0) {
+            text = `剩${minutes}分${seconds}秒`;
+            cssClass = minutes < 10 ? 'warning' : 'positive';
+        } else {
+            text = `剩${seconds}秒`;
+            cssClass = 'warning';
+        }
+    } else {
+        // 超时
+        if (days > 0) {
+            text = `超${days}天${hours}时${minutes}分`;
+        } else if (hours > 0) {
+            text = `超${hours}时${minutes}分${seconds}秒`;
+        } else if (minutes > 0) {
+            text = `超${minutes}分${seconds}秒`;
+        } else {
+            text = `超${seconds}秒`;
+        }
+        cssClass = 'negative';
+    }
+    
+    return { text, cssClass };
+}
+
+/**
+ * 更新所有剩余时间显示（只更新文本，不重新渲染DOM）
+ */
+function updateTimeRemainingDisplays() {
+    const elements = document.querySelectorAll('.time-remaining[data-plan-end]');
+    const now = new Date();
+    
+    elements.forEach(el => {
+        const planEnd = new Date(el.dataset.planEnd);
+        const diffMs = planEnd - now;
+        const { text, cssClass } = formatTimeRemaining(diffMs);
+        
+        el.textContent = text;
+        el.className = `time-remaining ${cssClass}`;
+    });
+}
+
+/**
+ * 启动剩余时间更新定时器（任务详情页）
+ */
+function startTimeRemainingTimer() {
+    // 先停止已有的定时器
+    stopTimeRemainingTimer();
+    
+    // 立即更新一次
+    updateTimeRemainingDisplays();
+    
+    // 每秒更新一次
+    timeRemainingTimerId = setInterval(updateTimeRemainingDisplays, 1000);
+}
+
+/**
+ * 停止剩余时间更新定时器
+ */
+function stopTimeRemainingTimer() {
+    if (timeRemainingTimerId) {
+        clearInterval(timeRemainingTimerId);
+        timeRemainingTimerId = null;
+    }
+}
+
+// 项目列表时间更新定时器
+let projectTimeTimerId = null;
+
+/**
+ * 启动项目列表时间更新定时器
+ */
+function startProjectTimeTimer() {
+    // 先停止已有的定时器
+    stopProjectTimeTimer();
+    
+    // 立即更新一次
+    updateProjectTimeDisplays();
+    
+    // 每秒更新一次
+    projectTimeTimerId = setInterval(updateProjectTimeDisplays, 1000);
+}
+
+/**
+ * 停止项目列表时间更新定时器
+ */
+function stopProjectTimeTimer() {
+    if (projectTimeTimerId) {
+        clearInterval(projectTimeTimerId);
+        projectTimeTimerId = null;
+    }
+}
+
+/**
+ * 更新项目列表的剩余时间显示
+ */
+function updateProjectTimeDisplays() {
+    const elements = document.querySelectorAll('.time-remaining.project-time[data-plan-end]');
+    const now = new Date();
+    
+    elements.forEach(el => {
+        const planEnd = new Date(el.dataset.planEnd);
+        const diffMs = planEnd - now;
+        const { text, cssClass } = formatTimeRemaining(diffMs);
+        
+        el.textContent = text;
+        el.className = `time-remaining project-time ${cssClass}`;
+    });
+}
+
 /**
  * 关闭项目详情浮层
  */
 function closeProjectDetailModal() {
+    // 停止定时器
+    stopTimeRemainingTimer();
+    
     const modal = document.getElementById('projectDetailModal');
     modal.style.display = 'none';
     currentDetailProjectId = null;
@@ -382,9 +833,9 @@ function closeProjectDetailModal() {
 /**
  * 渲染项目详情内容（标题、元信息、任务列表）
  */
-function renderProjectDetailContent() {
+async function renderProjectDetailContent() {
     if (!currentDetailProjectId) return;
-    const projects = getProjects();
+    const projects = await getProjects();
     const project = projects.find(p => p.id === currentDetailProjectId);
     if (!project) return;
 
@@ -392,38 +843,55 @@ function renderProjectDetailContent() {
     const titleEl = document.getElementById('projectDetailTitle');
     if (titleEl) titleEl.textContent = project.name;
 
-    // 从任务中汇总计算项目时间和耗时
-    let planStart = null, planEnd = null, planDurationSum = 0;
-    let actualStart = null, actualEnd = null, actualDurationSum = 0;
+    // 优先使用项目本身的时间，如果没有则从任务汇总
+    let planStart = project.plan_start_date ? new Date(project.plan_start_date) : null;
+    let planEnd = project.plan_end_date ? new Date(project.plan_end_date) : null;
+    let planDurationSum = project.plan_duration ? parseFloat(project.plan_duration) : 0;
     
-    if (project.tasks && project.tasks.length > 0) {
+    let actualStart = project.actual_start_date ? new Date(project.actual_start_date) : null;
+    let actualEnd = project.actual_end_date ? new Date(project.actual_end_date) : null;
+    let actualDurationSum = project.actual_duration ? parseFloat(project.actual_duration) : 0;
+    
+    // 如果项目没有时间数据，从任务中汇总
+    if ((!planStart || !planEnd || !planDurationSum) && project.tasks && project.tasks.length > 0) {
+        let taskPlanStart = null, taskPlanEnd = null, taskPlanDuration = 0;
+        let taskActualStart = null, taskActualEnd = null, taskActualDuration = 0;
+        
         project.tasks.forEach(task => {
             // 预计时间
-            if (task.planStartDate) {
-                const taskStart = new Date(task.planStartDate);
-                if (!planStart || taskStart < planStart) planStart = taskStart;
+            if (task.plan_start_date) {
+                const taskStart = new Date(task.plan_start_date);
+                if (!taskPlanStart || taskStart < taskPlanStart) taskPlanStart = taskStart;
             }
-            if (task.planEndDate) {
-                const taskEnd = new Date(task.planEndDate);
-                if (!planEnd || taskEnd > planEnd) planEnd = taskEnd;
+            if (task.plan_end_date) {
+                const taskEnd = new Date(task.plan_end_date);
+                if (!taskPlanEnd || taskEnd > taskPlanEnd) taskPlanEnd = taskEnd;
             }
-            if (task.planDuration) {
-                planDurationSum += parseFloat(task.planDuration);
+            if (task.plan_duration) {
+                taskPlanDuration += parseFloat(task.plan_duration);
             }
             
             // 实际时间
-            if (task.actualStartDate) {
-                const taskStart = new Date(task.actualStartDate);
-                if (!actualStart || taskStart < actualStart) actualStart = taskStart;
+            if (task.actual_start_date) {
+                const taskStart = new Date(task.actual_start_date);
+                if (!taskActualStart || taskStart < taskActualStart) taskActualStart = taskStart;
             }
-            if (task.actualEndDate) {
-                const taskEnd = new Date(task.actualEndDate);
-                if (!actualEnd || taskEnd > actualEnd) actualEnd = taskEnd;
+            if (task.actual_end_date) {
+                const taskEnd = new Date(task.actual_end_date);
+                if (!taskActualEnd || taskEnd > taskActualEnd) taskActualEnd = taskEnd;
             }
-            if (task.actualDuration) {
-                actualDurationSum += parseFloat(task.actualDuration);
+            if (task.actual_duration) {
+                taskActualDuration += parseFloat(task.actual_duration);
             }
         });
+        
+        // 用任务汇总填充缺失的项目数据
+        if (!planStart) planStart = taskPlanStart;
+        if (!planEnd) planEnd = taskPlanEnd;
+        if (!planDurationSum) planDurationSum = taskPlanDuration;
+        if (!actualStart) actualStart = taskActualStart;
+        if (!actualEnd) actualEnd = taskActualEnd;
+        if (!actualDurationSum) actualDurationSum = taskActualDuration;
     }
     
     // 格式化显示
@@ -452,14 +920,51 @@ function renderProjectDetailContent() {
     if (tasksEl) {
         tasksEl.innerHTML = project.tasks.length === 0
             ? '<div class="task-empty">暂无任务</div>'
-            : project.tasks.map(task => `
+            : project.tasks.map(task => {
+                // 判断任务状态：backlog, ready, in progress, done
+                // done: 有结束时间
+                // in progress: 有开始时间但没结束时间
+                // ready: 有计划开始时间但没实际开始时间
+                // backlog: 都没有
+                const hasStarted = !!task.actual_start_date;
+                const hasEnded = !!task.actual_end_date;
+                const hasPlanned = !!task.plan_start_date;
+                
+                let status = 'backlog';
+                if (hasEnded) {
+                    status = 'done';
+                } else if (hasStarted) {
+                    status = 'in-progress';
+                } else if (hasPlanned) {
+                    status = 'ready';
+                }
+                
+                // 剩余时间显示（用 data 属性存储结束时间，由定时器更新）
+                let timeRemainingHtml = '';
+                if (task.plan_end_date && !hasEnded) {
+                    timeRemainingHtml = `<span class="time-remaining" data-plan-end="${task.plan_end_date}"></span>`;
+                }
+                
+                return `
                 <div class="task-item">
-                    <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${project.id}, ${task.id}); renderProjectDetailContent();">
+                    <div class="task-status-buttons">
+                        <button class="task-status-btn ${status === 'backlog' ? 'active' : ''}" onclick="setTaskStatus(${project.id}, ${task.id}, 'backlog')">backlog</button>
+                        <button class="task-status-btn ${status === 'ready' ? 'active' : ''}" onclick="setTaskStatus(${project.id}, ${task.id}, 'ready')">ready</button>
+                        <button class="task-status-btn status-progress ${status === 'in-progress' ? 'active' : ''}" onclick="setTaskStatus(${project.id}, ${task.id}, 'in-progress')">in progress</button>
+                        <button class="task-status-btn ${status === 'done' ? 'active' : ''}" onclick="setTaskStatus(${project.id}, ${task.id}, 'done')">done</button>
+                    </div>
                     <span class="task-name ${task.completed ? 'completed' : ''}" id="task-name-${task.id}" onclick="startEditTask(${project.id}, ${task.id})">${escapeHtml(task.name)}</span>
-                    <button class="btn-danger" onclick="deleteTask(${project.id}, ${task.id}); renderProjectDetailContent();">删除</button>
+                    ${timeRemainingHtml}
+                    <button class="btn-danger" onclick="deleteTask(${project.id}, ${task.id})">删除</button>
                 </div>
-            `).join('');
+            `}).join('');
     }
+    
+    // 启动剩余时间更新定时器
+    startTimeRemainingTimer();
+
+    // 渲染任务关系图
+    renderTaskGraph(project.tasks);
 
     // 底部按钮绑定
     const editBtn = document.getElementById('detailEditProjectBtn');
@@ -472,7 +977,7 @@ function renderProjectDetailContent() {
  * 打开“添加任务”浮层（复用编辑任务浮层，taskId=null）
  * @param {number} projectId 
  */
-function openAddTaskForProject(projectId) {    // 关闭项目详情浮层并记录返回路径
+async function openAddTaskForProject(projectId) {    // 关闭项目详情浮层并记录返回路径
     const detailModal = document.getElementById('projectDetailModal');
     if (detailModal && detailModal.style.display === 'flex') {
         detailModal.style.display = 'none';
@@ -499,11 +1004,14 @@ function openAddTaskForProject(projectId) {    // 关闭项目详情浮层并记
     document.getElementById('modalTaskActualEndDate').value = '';
     document.getElementById('modalTaskPriority').value = '中';
     // 类别默认继承项目
-    const projects = getProjects();
+    const projects = await getProjects();
     const project = projects.find(p => p.id === projectId);
     document.getElementById('modalTaskCategory').value = project?.category || '工作';
     document.getElementById('modalTaskBounty').value = '';
     document.getElementById('modalTaskCompleted').value = 'false';
+    document.getElementById('taskDependencyDisplay').value = ''; // 清空任务关联显示
+    document.getElementById('modalTaskDescription').value = ''; // 清空详情
+    selectedPrerequisites = []; // 清空已选前置任务
 
     // 修改标题为“添加任务”并显示
     const modal = document.getElementById('editTaskModal');
@@ -524,7 +1032,7 @@ function openAddTaskForProject(projectId) {    // 关闭项目详情浮层并记
  * 添加新项目（保留此函数以兼容可能的旧调用，但主要使用浮层方式创建）
  * @deprecated 建议使用 openCreateProjectModal() 和 confirmCreateProject()
  */
-function addProject() {
+async function addProject() {
     const input = document.getElementById('projectInput');
     if (!input) return; // 如果输入框不存在，直接返回
     
@@ -537,7 +1045,7 @@ function addProject() {
     }
 
     // 读取现有项目
-    const projects = getProjects();
+    const projects = await getProjects();
     
     // 创建新项目对象
     const newProject = {
@@ -561,20 +1069,32 @@ function addProject() {
  * 删除项目
  * @param {number} projectId - 要删除的项目ID
  */
-function deleteProject(projectId) {
+async function deleteProject(projectId) {
     if (!confirm('确定要删除这个项目吗？所有任务也会被删除！')) {
         return;
     }
 
-    // 读取项目数据
-    const projects = getProjects();
-    
-    // 过滤掉要删除的项目（保留ID不匹配的项目）
-    const updatedProjects = projects.filter(p => p.id !== projectId);
-    
-    // 保存并重新渲染
-    saveProjects(updatedProjects);
-    renderProjects();
+    try {
+        // 直接从数据库删除项目（CASCADE会自动删除关联的任务）
+        const { error } = await supabaseClient
+            .from('projects')
+            .delete()
+            .eq('id', projectId);
+        
+        if (error) {
+            console.error('Error deleting project:', error);
+            return;
+        }
+        
+        await renderProjects();
+        
+        // 如果当前在项目详情页，关闭详情页
+        if (currentDetailProjectId === projectId) {
+            closeProjectDetail();
+        }
+    } catch (err) {
+        console.error('Error in deleteProject:', err);
+    }
 }
 
 /**
@@ -603,25 +1123,25 @@ function startEditProject(projectId) {
  * 保存编辑后的项目名称
  * @param {number} projectId - 项目ID
  */
-function saveProjectName(projectId) {
+async function saveProjectName(projectId) {
     const input = document.getElementById(`edit-project-${projectId}`);
     if (!input) return;
     
     const newName = input.value.trim();
     if (!newName) {
-        renderProjects(); // 如果为空，恢复原来的显示
+        await renderProjects(); // 如果为空，恢复原来的显示
         return;
     }
 
     // 读取、修改、保存
-    const projects = getProjects();
+    const projects = await getProjects();
     const project = projects.find(p => p.id === projectId);
     if (project) {
         project.name = newName;
-        saveProjects(projects);
+        await saveProject(project);
     }
     
-    renderProjects();
+    await renderProjects();
 }
 
 // ============================================================
@@ -632,7 +1152,7 @@ function saveProjectName(projectId) {
  * 添加新任务到指定项目
  * @param {number} projectId - 项目ID
  */
-function addTask(projectId) {
+async function addTask(projectId) {
     const input = document.getElementById(`task-input-${projectId}`);
     const name = input.value.trim();
     
@@ -642,7 +1162,7 @@ function addTask(projectId) {
     }
 
     // 读取项目数据
-    const projects = getProjects();
+    const projects = await getProjects();
     
     // 找到对应的项目
     const project = projects.find(p => p.id === projectId);
@@ -687,17 +1207,28 @@ function addTask(projectId) {
  * @param {number} projectId - 项目ID
  * @param {number} taskId - 任务ID
  */
-function deleteTask(projectId, taskId) {
-    const projects = getProjects();
-    const project = projects.find(p => p.id === projectId);
-    
-    if (project) {
-        // 过滤掉要删除的任务
-        project.tasks = project.tasks.filter(t => t.id !== taskId);
-        saveProjects(projects);
+async function deleteTask(projectId, taskId) {
+    try {
+        // 直接从数据库删除任务
+        const { error } = await supabaseClient
+            .from('tasks')
+            .delete()
+            .eq('id', taskId);
+        
+        if (error) {
+            console.error('Error deleting task:', error);
+            return;
+        }
+        
+        await renderProjects();
+        
+        // 如果当前在项目详情页，也刷新详情页
+        if (currentDetailProjectId) {
+            await renderProjectDetailContent();
+        }
+    } catch (err) {
+        console.error('Error in deleteTask:', err);
     }
-    
-    renderProjects();
 }
 
 /**
@@ -705,20 +1236,128 @@ function deleteTask(projectId, taskId) {
  * @param {number} projectId - 项目ID
  * @param {number} taskId - 任务ID
  */
-function toggleTask(projectId, taskId) {
-    const projects = getProjects();
-    const project = projects.find(p => p.id === projectId);
-    
-    if (project) {
-        const task = project.tasks.find(t => t.id === taskId);
-        if (task) {
-            // 切换完成状态
-            task.completed = !task.completed;
-            saveProjects(projects);
+async function toggleTask(projectId, taskId) {
+    try {
+        // 获取当前任务状态
+        const { data: task, error: fetchError } = await supabaseClient
+            .from('tasks')
+            .select('completed')
+            .eq('id', taskId)
+            .single();
+        
+        if (fetchError) {
+            console.error('Error fetching task:', fetchError);
+            return;
         }
+        
+        // 切换状态
+        const { error: updateError } = await supabaseClient
+            .from('tasks')
+            .update({ completed: !task.completed })
+            .eq('id', taskId);
+        
+        if (updateError) {
+            console.error('Error updating task:', updateError);
+            return;
+        }
+        
+        await renderProjects();
+    } catch (err) {
+        console.error('Error in toggleTask:', err);
     }
-    
-    renderProjects();
+}
+
+/**
+ * 设置任务状态
+ * @param {number} projectId - 项目ID
+ * @param {number} taskId - 任务ID
+ * @param {string} status - 状态：'backlog', 'ready', 'in-progress', 'done'
+ */
+async function setTaskStatus(projectId, taskId, status) {
+    try {
+        const now = new Date().toISOString();
+        let updateData = {};
+        
+        switch (status) {
+            case 'backlog':
+                // 清除所有实际时间和计划时间，重置为初始状态
+                updateData = {
+                    plan_start_date: null,
+                    actual_start_date: null,
+                    actual_end_date: null,
+                    actual_duration: null,
+                    completed: false
+                };
+                break;
+                
+            case 'ready':
+                // 设置计划开始时间（如果没有的话），清除实际时间
+                updateData = {
+                    plan_start_date: now,
+                    actual_start_date: null,
+                    actual_end_date: null,
+                    actual_duration: null,
+                    completed: false
+                };
+                break;
+                
+            case 'in-progress':
+                // 设置实际开始时间，清除结束时间
+                updateData = {
+                    actual_start_date: now,
+                    actual_end_date: null,
+                    actual_duration: null,
+                    completed: false
+                };
+                break;
+                
+            case 'done':
+                // 设置实际结束时间，计算耗时
+                const { data: task, error: fetchError } = await supabaseClient
+                    .from('tasks')
+                    .select('actual_start_date')
+                    .eq('id', taskId)
+                    .single();
+                
+                if (fetchError) {
+                    console.error('Error fetching task:', fetchError);
+                    return;
+                }
+                
+                // 计算实际耗时（小时）
+                let actualDuration = null;
+                if (task.actual_start_date) {
+                    const startTime = new Date(task.actual_start_date);
+                    const endTime = new Date(now);
+                    actualDuration = (endTime - startTime) / (1000 * 60 * 60);
+                    actualDuration = Math.round(actualDuration * 100) / 100;
+                }
+                
+                updateData = {
+                    actual_end_date: now,
+                    completed: true
+                };
+                if (actualDuration !== null) {
+                    updateData.actual_duration = actualDuration;
+                }
+                break;
+        }
+        
+        const { error: updateError } = await supabaseClient
+            .from('tasks')
+            .update(updateData)
+            .eq('id', taskId);
+        
+        if (updateError) {
+            console.error('Error updating task status:', updateError);
+            return;
+        }
+        
+        await renderProjects();
+        renderProjectDetailContent();
+    } catch (err) {
+        console.error('Error in setTaskStatus:', err);
+    }
 }
 
 /**
@@ -749,8 +1388,8 @@ let currentEditingTask = {
  * @param {number} projectId - 项目ID
  * @param {number} taskId - 任务ID
  */
-function openEditTaskModal(projectId, taskId) {
-    const projects = getProjects();
+async function openEditTaskModal(projectId, taskId) {
+    const projects = await getProjects();
     const project = projects.find(p => p.id === projectId);
     const task = project?.tasks.find(t => t.id === taskId);
     
@@ -772,28 +1411,70 @@ function openEditTaskModal(projectId, taskId) {
     currentEditingTask.projectId = projectId;
     currentEditingTask.taskId = taskId;
 
-    // 填充表单数据
+    // 保存任务ID和项目ID到任务名称字段的dataset（供任务关联功能使用）
+    const taskNameField = document.getElementById('modalTaskName');
+    taskNameField.dataset.taskId = taskId;
+    taskNameField.dataset.projectId = projectId;
+
+    // 填充表单数据（映射数据库字段）
     document.getElementById('modalTaskName').value = task.name || '';
-    document.getElementById('modalTaskPlanStartDate').value = task.planStartDate || '';
-    document.getElementById('modalTaskPlanEndDate').value = task.planEndDate || '';
+    document.getElementById('modalTaskPlanStartDate').value = task.plan_start_date || '';
+    document.getElementById('modalTaskPlanEndDate').value = task.plan_end_date || '';
     
     const planDurationField = document.getElementById('modalTaskPlanDuration');
-    const planDuration = task.planDuration ?? '';
+    const planDuration = task.plan_duration ?? '';
     planDurationField.setAttribute('data-hours', planDuration);
     planDurationField.value = planDuration ? formatDuration(planDuration) : '';
     
-    document.getElementById('modalTaskActualStartDate').value = task.actualStartDate || '';
-    document.getElementById('modalTaskActualEndDate').value = task.actualEndDate || '';
+    document.getElementById('modalTaskActualStartDate').value = task.actual_start_date || '';
+    document.getElementById('modalTaskActualEndDate').value = task.actual_end_date || '';
     
     const actualDurationField = document.getElementById('modalTaskActualDuration');
-    const actualDuration = task.actualDuration ?? '';
+    const actualDuration = task.actual_duration ?? '';
     actualDurationField.setAttribute('data-hours', actualDuration);
     actualDurationField.value = actualDuration ? formatDuration(actualDuration) : '';
     
-    document.getElementById('modalTaskPriority').value = task.priority || '中';
+    // 设置优先级（兼容新旧格式）
+    let priorityValue;
+    if (typeof task.priority === 'object' && task.priority !== null) {
+        // 如果是对象，转换为 JSON 字符串
+        priorityValue = JSON.stringify(task.priority);
+    } else if (typeof task.priority === 'string') {
+        // 如果是字符串，直接使用
+        priorityValue = task.priority || '{"importance": 0, "urgency": 0}';
+    } else {
+        // 默认值
+        priorityValue = '{"importance": 0, "urgency": 0}';
+    }
+    document.getElementById('modalTaskPriority').value = priorityValue;
+    updatePriorityButtonDisplay();
+    
     document.getElementById('modalTaskCategory').value = task.category || '工作';
     document.getElementById('modalTaskBounty').value = task.bounty || 0;
     document.getElementById('modalTaskCompleted').value = task.completed ? 'true' : 'false';
+    document.getElementById('modalTaskDescription').value = task.description || '';
+
+    // 设置任务关联显示
+    const dependencyDisplay = document.getElementById('taskDependencyDisplay');
+    if (dependencyDisplay) {
+        if (task.prerequisites && task.prerequisites.length > 0) {
+            // 查找前置任务的名称
+            const prerequisiteNames = task.prerequisites
+                .map(prereqId => {
+                    const prereqTask = project.tasks.find(t => t.id === prereqId || t.id === parseInt(prereqId));
+                    return prereqTask ? prereqTask.name : null;
+                })
+                .filter(name => name !== null);
+            
+            if (prerequisiteNames.length > 0) {
+                dependencyDisplay.value = `[${prerequisiteNames.join('.')}]`;
+            } else {
+                dependencyDisplay.value = '';
+            }
+        } else {
+            dependencyDisplay.value = '';
+        }
+    }
 
     // 显示浮层
     document.getElementById('editTaskModal').style.display = 'flex';
@@ -830,6 +1511,8 @@ function closeEditTaskModal() {
     document.getElementById('modalTaskCategory').value = '工作';
     document.getElementById('modalTaskBounty').value = '';
     document.getElementById('modalTaskCompleted').value = 'false';
+    document.getElementById('taskDependencyDisplay').value = '';
+    document.getElementById('modalTaskDescription').value = '';
     
     // 清空当前编辑状态
     currentEditingTask.projectId = null;
@@ -844,8 +1527,9 @@ function closeEditTaskModal() {
 
 /**
  * 确认保存任务编辑
+ * 修复：添加 async/await 正确处理异步操作
  */
-function confirmEditTask() {
+async function confirmEditTask() {
     // 获取表单数据
     const name = document.getElementById('modalTaskName').value.trim();
     const planStartDate = document.getElementById('modalTaskPlanStartDate').value;
@@ -866,7 +1550,7 @@ function confirmEditTask() {
     }
 
     // 更新或新建任务数据
-    const projects = getProjects();
+    const projects = await getProjects();  // 修复：添加 await
     const project = projects.find(p => p.id === currentEditingTask.projectId);
     if (project) {
         if (currentEditingTask.taskId) {
@@ -902,10 +1586,10 @@ function confirmEditTask() {
                 completed
             });
         }
-        saveProjects(projects);
-        renderProjects();
-        // 如果详情浮层仍在打开，刷新其中内容
-        renderProjectDetailContent();
+        await saveProjects(projects);  // 修复：添加 await
+        // 移除手动渲染，Realtime 会自动处理
+        // await renderProjects();
+        // renderProjectDetailContent();
     }
 
     // 关闭浮层
@@ -915,7 +1599,13 @@ function confirmEditTask() {
 /**
  * 确认添加任务
  */
-function confirmAddTask() {
+async function confirmAddTask() {
+    // 检查用户登录状态
+    if (!currentUser) {
+        alert('请先登录');
+        return;
+    }
+    
     // 获取表单数据
     const name = document.getElementById('modalTaskName').value.trim();
     const planStartDate = document.getElementById('modalTaskPlanStartDate').value;
@@ -928,6 +1618,7 @@ function confirmAddTask() {
     const category = document.getElementById('modalTaskCategory').value;
     const bounty = parseFloat(document.getElementById('modalTaskBounty').value) || 0;
     const completed = document.getElementById('modalTaskCompleted').value === 'true';
+    const description = document.getElementById('modalTaskDescription').value;
 
     // 验证必填字段
     if (!name) {
@@ -935,27 +1626,39 @@ function confirmAddTask() {
         return;
     }
 
-    // 新建任务
-    const projects = getProjects();
-    const project = projects.find(p => p.id === currentEditingTask.projectId);
-    if (project) {
-        project.tasks.push({
-            id: Date.now(),
-            name,
-            planStartDate,
-            planEndDate,
-            planDuration,
-            actualStartDate,
-            actualEndDate,
-            actualDuration,
-            priority,
-            category,
-            bounty,
-            completed
-        });
-        saveProjects(projects);
-        renderProjects();
-        renderProjectDetailContent();
+    try {
+        // 新建任务直接插入数据库 - 添加 user_id
+        const { error } = await supabaseClient
+            .from('tasks')
+            .insert({
+                id: Date.now(),
+                project_id: currentEditingTask.projectId,
+                user_id: currentUser.id,  // 关键：添加用户ID
+                name,
+                plan_start_date: planStartDate || null,
+                plan_end_date: planEndDate || null,
+                plan_duration: planDuration,
+                actual_start_date: actualStartDate || null,
+                actual_end_date: actualEndDate || null,
+                actual_duration: actualDuration,
+                priority,
+                category,
+                bounty,
+                completed,
+                description
+            });
+        
+        if (error) {
+            console.error('Error creating task:', error);
+            alert('创建任务失败，请重试');
+            return;
+        }
+        
+        await renderProjects();
+        await renderProjectDetailContent();
+    } catch (err) {
+        console.error('Error in confirmAddTask:', err);
+        alert('创建任务失败，请重试');
     }
 
     // 关闭浮层
@@ -967,26 +1670,26 @@ function confirmAddTask() {
  * @param {number} projectId - 项目ID
  * @param {number} taskId - 任务ID
  */
-function saveTaskName(projectId, taskId) {
+async function saveTaskName(projectId, taskId) {
     const input = document.getElementById(`edit-task-${taskId}`);
     if (!input) return;
     
     const newName = input.value.trim();
     if (!newName) {
-        renderProjects();
+        await renderProjects();
         return;
     }
 
-    const projects = getProjects();
+    const projects = await getProjects();
     const project = projects.find(p => p.id === projectId);
     const task = project?.tasks.find(t => t.id === taskId);
     
     if (task) {
         task.name = newName;
-        saveProjects(projects);
+        await saveProjects(projects);
     }
     
-    renderProjects();
+    await renderProjects();
 }
 
 // ============================================================
@@ -996,9 +1699,9 @@ function saveTaskName(projectId, taskId) {
 /**
  * 渲染所有项目到页面
  */
-function renderProjects() {
+async function renderProjects() {
     const container = document.getElementById('projectList');
-    const projects = getProjects();
+    const projects = await getProjects();
 
     // 如果没有项目，显示空状态提示
     if (projects.length === 0) {
@@ -1007,18 +1710,52 @@ function renderProjects() {
     }
 
     // 生成项目列表 HTML（Dashboard 仅显示项目，不显示任务）
-    container.innerHTML = projects.map(project => `
+    container.innerHTML = projects.map(project => {
+        // 计算项目的预计结束时间（优先项目本身，其次从任务汇总）
+        let planEndDate = null;
+        let isCompleted = false;
+        
+        if (project.plan_end_date) {
+            planEndDate = new Date(project.plan_end_date);
+        } else if (project.tasks && project.tasks.length > 0) {
+            // 从任务中找最晚的预计结束时间
+            project.tasks.forEach(task => {
+                if (task.plan_end_date) {
+                    const taskEnd = new Date(task.plan_end_date);
+                    if (!planEndDate || taskEnd > planEndDate) {
+                        planEndDate = taskEnd;
+                    }
+                }
+            });
+        }
+        
+        // 检查项目是否已完成（所有任务都完成了）
+        if (project.tasks && project.tasks.length > 0) {
+            isCompleted = project.tasks.every(task => task.completed);
+        }
+        
+        // 生成剩余时间HTML
+        let timeRemainingHtml = '';
+        if (planEndDate && !isCompleted) {
+            timeRemainingHtml = `<span class="time-remaining project-time" data-plan-end="${planEndDate.toISOString()}"></span>`;
+        }
+        
+        return `
         <div class="project-card" onclick="openProjectDetailModal(${project.id})">
             <div class="project-header">
                 <span class="project-title" id="project-title-${project.id}" ondblclick="event.stopPropagation(); startEditProject(${project.id})">
                     ${escapeHtml(project.name)}
                 </span>
+                ${timeRemainingHtml}
                 <div class="project-actions" onclick="event.stopPropagation();">
                     <button class="btn-danger" onclick="deleteProject(${project.id})">删除</button>
                 </div>
             </div>
         </div>
-    `).join('');
+    `}).join('');
+    
+    // 启动项目列表的时间更新
+    startProjectTimeTimer();
 }
 
 // ============================================================
@@ -1124,9 +1861,24 @@ function attachTaskValidationListeners() {
 // 页面初始化
 // ============================================================
 
-// 页面加载完成后渲染项目列表
-document.addEventListener('DOMContentLoaded', function() {
-    renderProjects();
+// 页面加载完成后初始化认证和渲染
+document.addEventListener('DOMContentLoaded', async function() {
+    // 设置认证状态监听
+    setupAuthListener();
+    
+    // 获取当前会话（检查是否已登录）
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    currentUser = session?.user || null;
+    
+    if (currentUser) {
+        // 已登录：显示主界面
+        showMainApp();
+        await renderProjects();
+        setupRealtimeSubscription();
+    } else {
+        // 未登录：显示登录界面
+        showAuthUI();
+    }
 });
 
 // ============================================================
@@ -1279,10 +2031,95 @@ function closeDurationPicker() {
     selectedDurationMinute = 0;
 }
 
+// ============================================================
+// 赏金选择器
+// ============================================================
+
+let selectedBounty = 0;  // 当前选中的赏金
+
+/**
+ * 打开赏金选择器
+ */
+function openBountyPicker() {
+    // 读取当前赏金值
+    const bountyField = document.getElementById('modalTaskBounty');
+    selectedBounty = parseFloat(bountyField.value) || 0;
+    
+    // 渲染赏金选项
+    renderBountyOptions();
+    
+    // 显示赏金选择器
+    document.getElementById('bountyPickerModal').style.display = 'flex';
+}
+
+/**
+ * 关闭赏金选择器
+ */
+function closeBountyPicker() {
+    document.getElementById('bountyPickerModal').style.display = 'none';
+}
+
+/**
+ * 渲染赏金选项
+ */
+function renderBountyOptions() {
+    const container = document.getElementById('bountyOptions');
+    const bountyValues = [50, 100, 150, 200, 250, 300, 450, 500];
+    
+    container.innerHTML = bountyValues.map(value => `
+        <div class="bounty-option ${selectedBounty === value ? 'selected' : ''}" 
+             onclick="selectBounty(${value})">
+            ${value}
+        </div>
+    `).join('');
+}
+
+/**
+ * 选择赏金
+ * @param {number} value - 赏金值
+ */
+function selectBounty(value) {
+    selectedBounty = value;
+    renderBountyOptions();
+}
+
+/**
+ * 确认选择赏金
+ */
+function confirmBountyPicker() {
+    // 检查是否使用自定义赏金
+    const customInput = document.getElementById('customBountyInput');
+    if (customInput.value) {
+        selectedBounty = parseFloat(customInput.value) || 0;
+    }
+    
+    // 设置赏金值到输入框
+    const bountyField = document.getElementById('modalTaskBounty');
+    bountyField.value = selectedBounty;
+    
+    // 触发自动保存
+    autoSaveTask();
+    
+    // 清空自定义输入框
+    customInput.value = '';
+    
+    // 关闭选择器
+    closeBountyPicker();
+}
+
+// 创建防抖版本的自动保存函数（延迟1秒）
+let debouncedAutoSaveProject = null;
+let debouncedAutoSaveTask = null;
+
 /**
  * 为项目表单绑定实时保存监听器
  */
 function attachProjectAutoSaveListeners() {
+    // 初始化防抖函数（如果还未初始化）
+    if (!debouncedAutoSaveProject) {
+        debouncedAutoSaveProject = debounce(autoSaveProject, 1000);
+    }
+    
     // 获取所有输入字段
     const fields = [
         'modalProjectName',
@@ -1301,22 +2138,25 @@ function attachProjectAutoSaveListeners() {
     fields.forEach(fieldId => {
         const field = document.getElementById(fieldId);
         if (field) {
-            // 移除旧的监听器
+            // 移除旧的监听器（防止重复绑定）
             field.removeEventListener('change', autoSaveProject);
             field.removeEventListener('input', autoSaveProject);
+            field.removeEventListener('change', debouncedAutoSaveProject);
+            field.removeEventListener('input', debouncedAutoSaveProject);
             
             // 添加新的监听器
             if (field.type === 'date' || field.tagName === 'SELECT') {
-                field.addEventListener('change', autoSaveProject);
+                // 日期和下拉选择使用防抖版本
+                field.addEventListener('change', debouncedAutoSaveProject);
             } else if (field.type === 'text' && field.hasAttribute('readonly')) {
-                // 对于只读的字段，同时更新相对时间显示
+                // 对于只读的字段（如通过弹窗选择的），立即保存并更新相对时间
                 field.addEventListener('change', () => {
                     autoSaveProject();
                     updateProjectRelativeTimes();
                 });
             } else {
-                // 文本和数字输入框使用input事件（实时保存）
-                field.addEventListener('input', autoSaveProject);
+                // 文本和数字输入框使用防抖版本（避免每个字符都保存）
+                field.addEventListener('input', debouncedAutoSaveProject);
             }
         }
     });
@@ -1324,8 +2164,9 @@ function attachProjectAutoSaveListeners() {
 
 /**
  * 自动保存项目数据
+ * 优化：直接更新数据库，不再先读取所有项目数据
  */
-function autoSaveProject() {
+async function autoSaveProject() {
     if (!currentEditingProjectId) return;
     
     // 获取表单数据
@@ -1345,26 +2186,35 @@ function autoSaveProject() {
     const bountyValue = document.getElementById('modalBounty').value;
     const bounty = bountyValue ? parseFloat(bountyValue) : 0;
     
-    // 更新项目数据
-    const projects = getProjects();
-    const project = projects.find(p => p.id === currentEditingProjectId);
-    if (project) {
-        project.name = name;
-        project.planStartDate = planStartDate;
-        project.planEndDate = planEndDate;
-        project.planDuration = planDuration;
-        project.actualStartDate = actualStartDate;
-        project.actualEndDate = actualEndDate;
-        project.actualDuration = actualDuration;
-        project.priority = priority;
-        project.category = category;
-        project.bounty = bounty;
-        saveProjects(projects);
-        renderProjects();
-        renderProjectDetailContent();
+    // 优化：直接更新数据库，而不是先读取所有项目
+    try {
+        const { error } = await supabaseClient
+            .from('projects')
+            .update({
+                name,
+                plan_start_date: planStartDate || null,
+                plan_end_date: planEndDate || null,
+                plan_duration: planDuration,
+                actual_start_date: actualStartDate || null,
+                actual_end_date: actualEndDate || null,
+                actual_duration: actualDuration,
+                priority,
+                category,
+                bounty
+            })
+            .eq('id', currentEditingProjectId);
+
+        if (error) {
+            console.error('Error auto-saving project:', error);
+        }
+        
+        // 注意：由于有 Realtime 订阅，数据库变更会自动触发 renderProjects
+        // 这里移除手动渲染，避免重复渲染导致的性能问题
+    } catch (err) {
+        console.error('Error in autoSaveProject:', err);
     }
     
-    // 更新相对时间显示和验证状态
+    // 更新相对时间显示和验证状态（UI即时反馈）
     updateProjectRelativeTimes();
 }
 
@@ -1372,6 +2222,11 @@ function autoSaveProject() {
  * 为任务表单绑定实时保存监听器
  */
 function attachTaskAutoSaveListeners() {
+    // 初始化防抖函数（如果还未初始化）
+    if (!debouncedAutoSaveTask) {
+        debouncedAutoSaveTask = debounce(autoSaveTask, 1000);
+    }
+    
     // 获取所有输入字段
     const fields = [
         'modalTaskName',
@@ -1384,29 +2239,36 @@ function attachTaskAutoSaveListeners() {
         'modalTaskPriority',
         'modalTaskCategory',
         'modalTaskBounty',
-        'modalTaskCompleted'
+        'modalTaskCompleted',
+        'modalTaskDescription'
     ];
     
     // 为每个字段绑定change事件
     fields.forEach(fieldId => {
         const field = document.getElementById(fieldId);
         if (field) {
-            // 移除旧的监听器
+            // 移除旧的监听器（防止重复绑定）
             field.removeEventListener('change', autoSaveTask);
             field.removeEventListener('input', autoSaveTask);
+            field.removeEventListener('change', debouncedAutoSaveTask);
+            field.removeEventListener('input', debouncedAutoSaveTask);
             
             // 添加新的监听器
             if (field.type === 'date' || field.tagName === 'SELECT') {
-                field.addEventListener('change', autoSaveTask);
+                // 日期和下拉选择使用防抖版本
+                field.addEventListener('change', debouncedAutoSaveTask);
             } else if (field.type === 'text' && field.hasAttribute('readonly')) {
-                // 对于只读的字段，同时更新相对时间显示
+                // 对于只读的字段（如通过弹窗选择的），立即保存并更新相对时间
                 field.addEventListener('change', () => {
                     autoSaveTask();
                     updateTaskRelativeTimes();
                 });
+            } else if (field.tagName === 'TEXTAREA') {
+                // textarea（详情输入框）使用防抖版本
+                field.addEventListener('input', debouncedAutoSaveTask);
             } else {
-                // 文本和数字输入框使用input事件
-                field.addEventListener('input', autoSaveTask);
+                // 文本和数字输入框使用防抖版本（避免每个字符都保存）
+                field.addEventListener('input', debouncedAutoSaveTask);
             }
         }
     });
@@ -1415,7 +2277,7 @@ function attachTaskAutoSaveListeners() {
 /**
  * 自动保存任务数据
  */
-function autoSaveTask() {
+async function autoSaveTask() {
     if (!currentEditingTask.taskId) return;
     
     // 获取表单数据
@@ -1434,31 +2296,41 @@ function autoSaveTask() {
     const category = document.getElementById('modalTaskCategory').value;
     const bounty = parseFloat(document.getElementById('modalTaskBounty').value) || 0;
     const completed = document.getElementById('modalTaskCompleted').value === 'true';
+    const description = document.getElementById('modalTaskDescription').value;
     
-    // 更新任务数据
-    const projects = getProjects();
-    const project = projects.find(p => p.id === currentEditingTask.projectId);
-    if (project) {
-        const task = project.tasks.find(t => t.id === currentEditingTask.taskId);
-        if (task) {
-            task.name = name;
-            task.planStartDate = planStartDate;
-            task.planEndDate = planEndDate;
-            task.planDuration = planDuration;
-            task.actualStartDate = actualStartDate;
-            task.actualEndDate = actualEndDate;
-            task.actualDuration = actualDuration;
-            task.priority = priority;
-            task.category = category;
-            task.bounty = bounty;
-            task.completed = completed;
-            saveProjects(projects);
-            renderProjects();
-            renderProjectDetailContent();
+    try {
+        // 直接更新数据库中的任务
+        const { error } = await supabaseClient
+            .from('tasks')
+            .update({
+                name,
+                plan_start_date: planStartDate || null,
+                plan_end_date: planEndDate || null,
+                plan_duration: planDuration,
+                actual_start_date: actualStartDate || null,
+                actual_end_date: actualEndDate || null,
+                actual_duration: actualDuration,
+                priority,
+                category,
+                bounty,
+                completed,
+                description
+            })
+            .eq('id', currentEditingTask.taskId);
+        
+        if (error) {
+            console.error('Error saving task:', error);
+            return;
         }
+        
+        // 移除手动渲染，依赖 Realtime 订阅更新
+        // Supabase 的 Realtime 功能会自动触发 renderProjects 和 renderProjectDetailContent
+        // 这里手动调用会导致重复渲染，影响性能
+    } catch (err) {
+        console.error('Error in autoSaveTask:', err);
     }
     
-    // 更新相对时间显示和验证状态
+    // 更新相对时间显示和验证状态（UI即时反馈）
     updateTaskRelativeTimes();
 }
 
@@ -1809,23 +2681,30 @@ function updateCombinedDateTime(fieldId, boxId) {
     
     if (!field || !box) return;
     
-    const value = field.value;
-    if (!value) {
+    const rawValue = field.value;
+    if (!rawValue) {
         box.textContent = '-';
         return;
     }
     
-    // 解析格式：YYYY-MM-DD HH:MM
-    const parts = value.split(' ');
-    if (parts.length !== 2) {
+    // 兼容不同格式："YYYY-MM-DD HH:MM"、"YYYY-MM-DDTHH:MM:SSZ"、仅日期
+    let normalized = rawValue.replace('T', ' ').replace('Z', '').trim();
+    // 去掉时区偏移（+08:00）等，只保留日期和时间部分
+    if (normalized.includes('+')) {
+        normalized = normalized.split('+')[0].trim();
+    }
+    if (!normalized.includes(' ')) {
+        normalized = `${normalized} 00:00`;
+    }
+    const parts = normalized.split(' ');
+    if (parts.length < 2) {
         box.textContent = '-';
         return;
     }
-    
     const dateStr = parts[0];
     const timeParts = parts[1].split(':');
-    const hour = parseInt(timeParts[0]);
-    const minute = parseInt(timeParts[1]) || 0;
+    const hour = parseInt(timeParts[0] || '0', 10);
+    const minute = parseInt(timeParts[1] || '0', 10);
     
     // 计算天数差
     const today = new Date();
@@ -1849,7 +2728,7 @@ function updateCombinedDateTime(fieldId, boxId) {
         dayText = `${Math.abs(diffDays)}天前`;
     }
     
-    // 计算小时和分钟差
+    // 计算小时和分钟差（基于当前时间）
     const now = new Date();
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
@@ -2216,4 +3095,870 @@ function formatDuration(hours) {
         return `${h}小时${m}分钟`;
     }
 }
+
+// ============================================================
+//  任务依赖关系管理
+// ============================================================
+
+/**
+ * 打开任务关联设置浮层
+ */
+async function openTaskDependencyModal() {
+    // 保存当前编辑的任务信息
+    const taskNameField = document.getElementById('modalTaskName');
+    if (taskNameField && taskNameField.dataset.taskId) {
+        currentEditingTaskId = parseInt(taskNameField.dataset.taskId);
+        currentEditingTaskProjectId = parseInt(taskNameField.dataset.projectId);
+    } else {
+        alert('无法获取任务信息，请重新打开任务编辑页面');
+        return;
+    }
+    
+    // 获取最新的项目数据
+    const projectsData = await getProjects();
+    
+    // 获取当前任务已有的前置任务
+    if (currentEditingTaskId && currentEditingTaskProjectId) {
+        const project = projectsData.find(p => p.id === currentEditingTaskProjectId);
+        if (project) {
+            const task = project.tasks.find(t => t.id === currentEditingTaskId);
+            if (task && task.prerequisites) {
+                selectedPrerequisites = [...task.prerequisites];
+            } else {
+                selectedPrerequisites = [];
+            }
+        }
+    } else {
+        selectedPrerequisites = [];
+    }
+    
+    // 更新显示框
+    await updatePrerequisitesDisplay();
+    
+    // 显示任务关联设置浮层
+    document.getElementById('taskDependencyModal').style.display = 'flex';
+}
+
+/**
+ * 关闭任务关联设置浮层
+ */
+function closeTaskDependencyModal() {
+    document.getElementById('taskDependencyModal').style.display = 'none';
+}
+
+/**
+ * 打开前置任务选择器
+ */
+async function openPrerequisiteSelector() {
+    if (!currentEditingTaskProjectId) {
+        alert('无法获取项目信息');
+        return;
+    }
+    
+    // 获取最新的项目数据
+    const projectsData = await getProjects();
+    const project = projectsData.find(p => p.id === currentEditingTaskProjectId);
+    if (!project) {
+        alert('项目不存在');
+        return;
+    }
+    
+    // 渲染任务列表（排除当前任务）
+    const listContainer = document.getElementById('prerequisiteTaskList');
+    const otherTasks = project.tasks.filter(t => t.id !== currentEditingTaskId);
+    
+    if (otherTasks.length === 0) {
+        listContainer.innerHTML = '<div class="task-empty">暂无其他任务</div>';
+    } else {
+        listContainer.innerHTML = otherTasks.map(task => `
+            <label class="prerequisite-item">
+                <input 
+                    type="checkbox" 
+                    value="${task.id}"
+                    ${selectedPrerequisites.includes(task.id) ? 'checked' : ''}
+                    onchange="togglePrerequisite(${task.id}, this.checked)"
+                >
+                <span class="task-name ${task.completed ? 'completed' : ''}">
+                    ${escapeHtml(task.name)}
+                </span>
+                ${task.completed ? '<span class="task-status">✅ 已完成</span>' : '<span class="task-status">⏳ 进行中</span>'}
+            </label>
+        `).join('');
+    }
+    
+    // 显示前置任务选择器
+    document.getElementById('prerequisiteSelectorModal').style.display = 'flex';
+}
+
+/**
+ * 关闭前置任务选择器
+ */
+function closePrerequisiteSelector() {
+    document.getElementById('prerequisiteSelectorModal').style.display = 'none';
+}
+
+/**
+ * 切换前置任务选择
+ * @param {number} taskId 
+ * @param {boolean} checked 
+ */
+function togglePrerequisite(taskId, checked) {
+    if (checked) {
+        if (!selectedPrerequisites.includes(taskId)) {
+            selectedPrerequisites.push(taskId);
+        }
+    } else {
+        selectedPrerequisites = selectedPrerequisites.filter(id => id !== taskId);
+    }
+}
+
+/**
+ * 确认前置任务选择
+ */
+function confirmPrerequisiteSelection() {
+    // 更新显示框
+    updatePrerequisitesDisplay();
+    
+    // 关闭选择器
+    closePrerequisiteSelector();
+}
+
+/**
+ * 更新已选择的前置任务显示框
+ */
+async function updatePrerequisitesDisplay() {
+    const displayContainer = document.getElementById('selectedPrerequisitesDisplay');
+    const displayInput = document.getElementById('taskDependencyDisplay');
+    
+    if (!displayContainer) {
+        console.error('selectedPrerequisitesDisplay not found');
+        return;
+    }
+    
+    if (!selectedPrerequisites || selectedPrerequisites.length === 0) {
+        displayContainer.innerHTML = '<span class="empty-hint">暂无前置任务</span>';
+        if (displayInput) {
+            displayInput.value = '';
+        }
+        return;
+    }
+    
+    // 获取最新的项目数据
+    const projectsData = await getProjects();
+    if (!projectsData || projectsData.length === 0) {
+        displayContainer.innerHTML = '<span class="empty-hint">加载中...</span>';
+        if (displayInput) {
+            displayInput.value = '';
+        }
+        return;
+    }
+    
+    // 获取任务信息
+    const project = projectsData.find(p => p.id === currentEditingTaskProjectId);
+    if (!project) {
+        console.error('Project not found:', currentEditingTaskProjectId);
+        displayContainer.innerHTML = '<span class="empty-hint">项目不存在</span>';
+        if (displayInput) {
+            displayInput.value = '';
+        }
+        return;
+    }
+    
+    const prerequisiteTasks = selectedPrerequisites
+        .map(id => project.tasks.find(t => t.id === id || t.id === parseInt(id) || String(t.id) === String(id)))
+        .filter(t => t); // 过滤掉不存在的任务
+    
+    if (prerequisiteTasks.length === 0) {
+        displayContainer.innerHTML = '<span class="empty-hint">前置任务不存在</span>';
+        if (displayInput) {
+            displayInput.value = '';
+        }
+        return;
+    }
+    
+    // 更新弹窗内的显示
+    displayContainer.innerHTML = prerequisiteTasks.map(task => `
+        <div class="prerequisite-tag">
+            <span>${escapeHtml(task.name)}</span>
+            <span class="remove-btn" onclick="removePrerequisite(${task.id})">✕</span>
+        </div>
+    `).join('');
+    
+    // 更新主表单的input显示
+    if (displayInput) {
+        const taskNames = prerequisiteTasks.map(t => t.name).join('.');
+        displayInput.value = `[${taskNames}]`;
+    }
+}
+
+/**
+ * 移除前置任务
+ * @param {number} taskId 
+ */
+function removePrerequisite(taskId) {
+    selectedPrerequisites = selectedPrerequisites.filter(id => id !== taskId);
+    updatePrerequisitesDisplay();
+}
+
+/**
+ * 确认任务关联设置
+ */
+async function confirmTaskDependency() {
+    if (!currentEditingTaskId || !currentEditingTaskProjectId) {
+        alert('无法保存任务关联');
+        return;
+    }
+    
+    try {
+        // 保存到数据库
+        const { error } = await supabaseClient
+            .from('tasks')
+            .update({
+                prerequisites: selectedPrerequisites
+            })
+            .eq('id', currentEditingTaskId);
+        
+        if (error) {
+            console.error('Error updating task prerequisites:', error);
+            alert('保存失败，请重试');
+            return;
+        }
+        
+        // 刷新界面
+        await renderProjects();
+        if (currentDetailProjectId) {
+            await renderProjectDetailContent();
+        }
+        
+        // 关闭浮层
+        closeTaskDependencyModal();
+    } catch (err) {
+        console.error('Error in confirmTaskDependency:', err);
+        alert('保存失败，请重试');
+    }
+}
+
+// ============================================================
+//  任务关系图（力导向图）
+// ============================================================
+
+let taskGraphSimulation = null;  // D3 力模拟对象
+let currentGraphMode = 'combined';  // 当前图表模式：combined, importance, urgency, bounty
+let currentGraphTasks = [];  // 当前显示的任务列表（用于重绘）
+
+/**
+ * 设置图表模式并重绘
+ * @param {string} mode - 模式：combined, importance, urgency, bounty
+ */
+function setGraphMode(mode) {
+    currentGraphMode = mode;
+    
+    // 更新按钮状态
+    document.querySelectorAll('.task-graph-mode-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+    
+    // 重绘图表
+    if (currentGraphTasks.length > 0) {
+        renderTaskGraph(currentGraphTasks);
+    }
+}
+
+/**
+ * 渲染任务关系图
+ * @param {Array} tasks - 任务列表
+ */
+function renderTaskGraph(tasks) {
+    // 保存任务列表供模式切换时重绘
+    currentGraphTasks = tasks;
+    
+    const container = document.getElementById('taskGraphContainer');
+    const svg = d3.select('#taskGraphSvg');
+    
+    // 清空现有内容
+    svg.selectAll('*').remove();
+    
+    // 如果没有任务，显示空提示
+    if (!tasks || tasks.length === 0) {
+        container.innerHTML = '<div class="task-graph-empty">暂无任务</div>';
+        return;
+    }
+    
+    // 恢复SVG
+    if (!document.getElementById('taskGraphSvg')) {
+        container.innerHTML = '<svg id="taskGraphSvg"></svg>';
+    }
+    
+    // 获取容器尺寸
+    const width = container.clientWidth || 600;
+    const height = container.clientHeight || 300;
+    
+    // 设置SVG尺寸
+    svg.attr('width', width).attr('height', height);
+    
+    /**
+     * 计算小球半径倍率
+     * 重要度 (-1~1) → 倍率 (0.5~2)，0时为1
+     * 紧急度 (-1~1) → 倍率 (0.5~2)，0时为1
+     * 赏金 (0~200) → 倍率 (0.5~2)，0时为1
+     */
+    function calculateNodeRadius(task) {
+        const baseRadius = 20;
+        
+        // 重要度和紧急度的映射函数: -1→0.5, 0→1, 1→2
+        function mapValueToMultiplier(value) {
+            if (value === 0) return 1;
+            if (value > 0) {
+                return 1 + value;  // 0→1, 1→2
+            } else {
+                return 1 + value * 0.5;  // -1→0.5, 0→1
+            }
+        }
+        
+        // 赏金映射函数: 0→1, 200→2
+        function mapBountyToMultiplier(bounty) {
+            const clampedBounty = Math.min(Math.max(bounty || 0, 0), 200);
+            if (clampedBounty === 0) return 1;
+            return 0.5 + (clampedBounty / 200) * 1.5;
+        }
+        
+        const importance = task.importance || 0;
+        const urgency = task.urgency || 0;
+        const bounty = task.bounty || 0;
+        
+        const impMult = mapValueToMultiplier(importance);
+        const urgMult = mapValueToMultiplier(urgency);
+        const bountyMult = mapBountyToMultiplier(bounty);
+        
+        // 根据当前模式选择倍率
+        let multiplier;
+        switch (currentGraphMode) {
+            case 'importance':
+                multiplier = impMult;
+                break;
+            case 'urgency':
+                multiplier = urgMult;
+                break;
+            case 'bounty':
+                multiplier = bountyMult;
+                break;
+            case 'combined':
+            default:
+                // 综合倍率（三者几何平均）
+                multiplier = Math.pow(impMult * urgMult * bountyMult, 1/3);
+                break;
+        }
+        
+        return baseRadius * multiplier;
+    }
+    
+    // 构建节点数据
+    const nodes = tasks.map(task => ({
+        id: task.id,
+        name: task.name,
+        completed: task.completed,
+        prerequisites: task.prerequisites || [],
+        importance: task.importance || 0,
+        urgency: task.urgency || 0,
+        bounty: task.bounty || 0,
+        radius: calculateNodeRadius(task)
+    }));
+    
+    // 构建连接数据（从前置任务指向当前任务）
+    const links = [];
+    tasks.forEach(task => {
+        if (task.prerequisites && task.prerequisites.length > 0) {
+            task.prerequisites.forEach(prereqId => {
+                // 确保前置任务存在于当前任务列表中
+                if (nodes.find(n => n.id === prereqId)) {
+                    links.push({
+                        source: prereqId,
+                        target: task.id
+                    });
+                }
+            });
+        }
+    });
+    
+    // 创建箭头标记
+    svg.append('defs').append('marker')
+        .attr('id', 'arrowhead')
+        .attr('viewBox', '0 -5 10 10')
+        .attr('refX', 0)
+        .attr('refY', 0)
+        .attr('markerWidth', 6)
+        .attr('markerHeight', 6)
+        .attr('orient', 'auto')
+        .append('path')
+        .attr('d', 'M0,-5L10,0L0,5')
+        .attr('fill', 'rgba(102, 255, 204, 0.6)');
+    
+    // 创建力模拟
+    taskGraphSimulation = d3.forceSimulation(nodes)
+        .force('link', d3.forceLink(links).id(d => d.id).distance(80).strength(0.5))
+        .force('charge', d3.forceManyBody().strength(-200))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('collision', d3.forceCollide().radius(d => d.radius + 5));
+    
+    // 绘制连接线
+    const link = svg.append('g')
+        .attr('class', 'links')
+        .selectAll('line')
+        .data(links)
+        .enter()
+        .append('line')
+        .attr('class', 'task-link')
+        .attr('marker-end', 'url(#arrowhead)');
+    
+    // 创建节点组
+    const node = svg.append('g')
+        .attr('class', 'nodes')
+        .selectAll('g')
+        .data(nodes)
+        .enter()
+        .append('g')
+        .attr('class', d => `task-node ${d.completed ? 'completed' : ''}`)
+        .call(d3.drag()
+            .on('start', dragStarted)
+            .on('drag', dragged)
+            .on('end', dragEnded));
+    
+    // 添加圆形节点（大小根据重要度、紧急度、赏金计算）
+    node.append('circle')
+        .attr('r', d => d.radius);
+    
+    // 添加任务名称
+    node.append('text')
+        .attr('dy', 4)
+        .text(d => truncateName(d.name, 6));
+    
+    // 添加悬停提示
+    node.append('title')
+        .text(d => d.name);
+    
+    // 力模拟更新
+    taskGraphSimulation.on('tick', () => {
+        // 限制节点在边界内（使用各节点的半径）
+        nodes.forEach(d => {
+            d.x = Math.max(d.radius, Math.min(width - d.radius, d.x));
+            d.y = Math.max(d.radius, Math.min(height - d.radius, d.y));
+        });
+        
+        // 计算连接线终点（在目标节点边缘停止，为箭头留出空间）
+        link
+            .attr('x1', d => d.source.x)
+            .attr('y1', d => d.source.y)
+            .attr('x2', d => {
+                const dx = d.target.x - d.source.x;
+                const dy = d.target.y - d.source.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist === 0) return d.target.x;
+                // 箭头偏移量（节点半径 + 箭头大小）
+                const offset = d.target.radius + 5;
+                return d.target.x - (dx / dist) * offset;
+            })
+            .attr('y2', d => {
+                const dx = d.target.x - d.source.x;
+                const dy = d.target.y - d.source.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist === 0) return d.target.y;
+                const offset = d.target.radius + 5;
+                return d.target.y - (dy / dist) * offset;
+            });
+        
+        node.attr('transform', d => `translate(${d.x},${d.y})`);
+    });
+    
+    // 鼠标悬停效果：高亮相关连接
+    node.on('mouseenter', function(event, d) {
+        // 高亮与此节点相关的连接线
+        link.classed('highlighted', l => l.source.id === d.id || l.target.id === d.id);
+    }).on('mouseleave', function() {
+        link.classed('highlighted', false);
+    });
+    
+    // 双击节点打开任务编辑页面
+    node.on('dblclick', function(event, d) {
+        event.stopPropagation();  // 阻止事件冒泡
+        openEditTaskModal(currentDetailProjectId, d.id);
+    });
+}
+
+/**
+ * 截断名称
+ * @param {string} name 
+ * @param {number} maxLen 
+ */
+function truncateName(name, maxLen) {
+    if (!name) return '';
+    return name.length > maxLen ? name.substring(0, maxLen) + '..' : name;
+}
+
+/**
+ * 拖拽开始
+ */
+function dragStarted(event, d) {
+    if (!event.active) taskGraphSimulation.alphaTarget(0.3).restart();
+    d.fx = d.x;
+    d.fy = d.y;
+    
+    // 添加拖拽样式
+    d3.select(this).classed('dragging', true);
+    
+    // 获取关联的节点ID
+    const relatedIds = getRelatedNodeIds(d.id);
+    
+    // 存储关联节点的初始偏移量
+    d._relatedOffsets = {};
+    const nodes = taskGraphSimulation.nodes();
+    relatedIds.forEach(id => {
+        const relatedNode = nodes.find(n => n.id === id);
+        if (relatedNode && relatedNode.id !== d.id) {
+            d._relatedOffsets[id] = {
+                dx: relatedNode.x - d.x,
+                dy: relatedNode.y - d.y
+            };
+        }
+    });
+}
+
+/**
+ * 拖拽中
+ */
+function dragged(event, d) {
+    d.fx = event.x;
+    d.fy = event.y;
+    
+    // 拖动关联的节点（带弹性效果）
+    const nodes = taskGraphSimulation.nodes();
+    if (d._relatedOffsets) {
+        Object.entries(d._relatedOffsets).forEach(([id, offset]) => {
+            const relatedNode = nodes.find(n => n.id === parseInt(id));
+            if (relatedNode) {
+                // 使用弹性系数让关联节点跟随但有延迟
+                const elasticity = 0.3;
+                const targetX = event.x + offset.dx;
+                const targetY = event.y + offset.dy;
+                relatedNode.fx = relatedNode.x + (targetX - relatedNode.x) * elasticity;
+                relatedNode.fy = relatedNode.y + (targetY - relatedNode.y) * elasticity;
+            }
+        });
+    }
+}
+
+/**
+ * 拖拽结束
+ */
+function dragEnded(event, d) {
+    if (!event.active) taskGraphSimulation.alphaTarget(0);
+    d.fx = null;
+    d.fy = null;
+    
+    // 移除拖拽样式
+    d3.select(this).classed('dragging', false);
+    
+    // 释放关联节点的固定位置
+    const nodes = taskGraphSimulation.nodes();
+    if (d._relatedOffsets) {
+        Object.keys(d._relatedOffsets).forEach(id => {
+            const relatedNode = nodes.find(n => n.id === parseInt(id));
+            if (relatedNode) {
+                relatedNode.fx = null;
+                relatedNode.fy = null;
+            }
+        });
+        delete d._relatedOffsets;
+    }
+}
+
+/**
+ * 获取与指定节点关联的所有节点ID（包括前置和后续任务）
+ * @param {number} nodeId 
+ * @returns {Set} 关联节点ID集合
+ */
+function getRelatedNodeIds(nodeId) {
+    const nodes = taskGraphSimulation.nodes();
+    const related = new Set();
+    
+    // 查找所有直接关联的节点
+    nodes.forEach(node => {
+        // 当前节点的前置任务
+        if (node.id === nodeId && node.prerequisites) {
+            node.prerequisites.forEach(id => related.add(id));
+        }
+        // 以当前节点为前置任务的节点
+        if (node.prerequisites && node.prerequisites.includes(nodeId)) {
+            related.add(node.id);
+        }
+    });
+    
+    return related;
+}
+
+// ============================================================
+//  重要度/紧急度矩阵选择器
+// ============================================================
+
+let selectedImportance = 0;  // -1 到 1
+let selectedUrgency = 0;     // -1 到 1
+
+/**
+ * 打开重要度/紧急度矩阵选择器
+ */
+function openPriorityMatrix() {
+    // 读取当前值
+    const priorityField = document.getElementById('modalTaskPriority');
+    if (priorityField && priorityField.value) {
+        try {
+            const data = JSON.parse(priorityField.value);
+            selectedImportance = data.importance || 0;
+            selectedUrgency = data.urgency || 0;
+        } catch (e) {
+            // 兼容旧数据格式（低/中/高）
+            const oldValue = priorityField.value;
+            if (oldValue === '低') {
+                selectedImportance = -0.5;
+                selectedUrgency = -0.5;
+            } else if (oldValue === '中') {
+                selectedImportance = 0;
+                selectedUrgency = 0;
+            } else if (oldValue === '高') {
+                selectedImportance = 0.5;
+                selectedUrgency = 0.5;
+            }
+        }
+    }
+    
+    // 渲染坐标系
+    renderPriorityMatrix();
+    
+    // 显示浮层
+    document.getElementById('priorityMatrixModal').style.display = 'flex';
+}
+
+/**
+ * 关闭重要度/紧急度矩阵选择器
+ */
+function closePriorityMatrix() {
+    document.getElementById('priorityMatrixModal').style.display = 'none';
+}
+
+/**
+ * 渲染重要度/紧急度矩阵
+ */
+function renderPriorityMatrix() {
+    const svg = d3.select('#priorityMatrixSvg');
+    svg.selectAll('*').remove();
+    
+    const container = document.querySelector('.priority-matrix-container');
+    const width = container.clientWidth || 500;
+    const height = container.clientHeight || 500;
+    const padding = 50;
+    const size = Math.min(width, height) - padding * 2;
+    
+    svg.attr('width', width).attr('height', height);
+    
+    // 坐标原点在中心
+    const originX = width / 2;
+    const originY = height / 2;
+    const scale = size / 2;  // -1到1映射到坐标系
+    
+    // 绘制网格线
+    const gridLines = [-0.5, 0.5];
+    gridLines.forEach(val => {
+        // 垂直线
+        svg.append('line')
+            .attr('class', 'priority-grid')
+            .attr('x1', originX + val * scale)
+            .attr('y1', originY - scale)
+            .attr('x2', originX + val * scale)
+            .attr('y2', originY + scale);
+        
+        // 水平线
+        svg.append('line')
+            .attr('class', 'priority-grid')
+            .attr('x1', originX - scale)
+            .attr('y1', originY - val * scale)
+            .attr('x2', originX + scale)
+            .attr('y2', originY - val * scale);
+    });
+    
+    // 绘制X轴（紧急度）
+    svg.append('line')
+        .attr('class', 'priority-axis')
+        .attr('x1', originX - scale)
+        .attr('y1', originY)
+        .attr('x2', originX + scale)
+        .attr('y2', originY);
+    
+    // X轴箭头
+    svg.append('polygon')
+        .attr('class', 'priority-axis-arrow')
+        .attr('points', `${originX + scale},${originY} ${originX + scale - 8},${originY - 4} ${originX + scale - 8},${originY + 4}`);
+    
+    // 绘制Y轴（重要度）
+    svg.append('line')
+        .attr('class', 'priority-axis')
+        .attr('x1', originX)
+        .attr('y1', originY - scale)
+        .attr('x2', originX)
+        .attr('y2', originY + scale);
+    
+    // Y轴箭头
+    svg.append('polygon')
+        .attr('class', 'priority-axis-arrow')
+        .attr('points', `${originX},${originY - scale} ${originX - 4},${originY - scale + 8} ${originX + 4},${originY - scale + 8}`);
+    
+    // 添加轴标签
+    svg.append('text')
+        .attr('class', 'priority-label')
+        .attr('x', originX + scale + 15)
+        .attr('y', originY + 5)
+        .text('紧急→');
+    
+    svg.append('text')
+        .attr('class', 'priority-label')
+        .attr('x', originX - 5)
+        .attr('y', originY - scale - 10)
+        .attr('text-anchor', 'middle')
+        .text('↑重要');
+    
+    // 绘制当前选中的点
+    updatePriorityPoint(originX, originY, scale);
+    
+    // 点击坐标系选择位置
+    svg.append('rect')
+        .attr('x', originX - scale)
+        .attr('y', originY - scale)
+        .attr('width', scale * 2)
+        .attr('height', scale * 2)
+        .attr('fill', 'transparent')
+        .on('click', function(event) {
+            const [mouseX, mouseY] = d3.pointer(event);
+            
+            // 转换为-1到1的坐标
+            selectedUrgency = Math.max(-1, Math.min(1, (mouseX - originX) / scale));
+            selectedImportance = Math.max(-1, Math.min(1, (originY - mouseY) / scale));
+            
+            // 保留2位小数
+            selectedUrgency = Math.round(selectedUrgency * 100) / 100;
+            selectedImportance = Math.round(selectedImportance * 100) / 100;
+            
+            // 更新显示
+            updatePriorityPoint(originX, originY, scale);
+        });
+}
+
+/**
+ * 更新选中点的显示
+ */
+function updatePriorityPoint(originX, originY, scale) {
+    const svg = d3.select('#priorityMatrixSvg');
+    
+    // 移除旧的点
+    svg.selectAll('.priority-point').remove();
+    svg.selectAll('.priority-point-label').remove();
+    
+    // 计算点的位置
+    const pointX = originX + selectedUrgency * scale;
+    const pointY = originY - selectedImportance * scale;
+    
+    // 绘制新的点
+    svg.append('circle')
+        .attr('class', 'priority-point')
+        .attr('cx', pointX)
+        .attr('cy', pointY)
+        .attr('r', 8);
+    
+    // 绘制点上的文字（分两行）
+    const importanceLabel = selectedImportance >= 0 ? `重要 ${selectedImportance.toFixed(1)}` : `不重要 ${Math.abs(selectedImportance).toFixed(1)}`;
+    const urgencyLabel = selectedUrgency >= 0 ? `紧急 ${selectedUrgency.toFixed(1)}` : `不紧急 ${Math.abs(selectedUrgency).toFixed(1)}`;
+    
+    svg.append('text')
+        .attr('class', 'priority-point-label')
+        .attr('x', pointX)
+        .attr('y', pointY - 15)
+        .text(importanceLabel);
+    
+    svg.append('text')
+        .attr('class', 'priority-point-label')
+        .attr('x', pointX)
+        .attr('y', pointY - 3)
+        .text(urgencyLabel);
+    
+    // 更新信息框
+    updatePriorityInfoBox();
+}
+
+/**
+ * 更新信息显示框
+ */
+function updatePriorityInfoBox() {
+    const infoBox = document.getElementById('priorityInfoBox');
+    
+    const importanceLabel = selectedImportance >= 0 ? `重要 ${selectedImportance.toFixed(1)}` : `不重要 ${Math.abs(selectedImportance).toFixed(1)}`;
+    const urgencyLabel = selectedUrgency >= 0 ? `紧急 ${selectedUrgency.toFixed(1)}` : `不紧急 ${Math.abs(selectedUrgency).toFixed(1)}`;
+    
+    infoBox.innerHTML = `
+        <div style="line-height: 1.8;">
+            <div>${importanceLabel}</div>
+            <div>${urgencyLabel}</div>
+        </div>
+    `;
+}
+
+/**
+ * 确认选择
+ */
+function confirmPriorityMatrix() {
+    // 保存到隐藏字段
+    const priorityField = document.getElementById('modalTaskPriority');
+    const data = {
+        importance: selectedImportance,
+        urgency: selectedUrgency
+    };
+    priorityField.value = JSON.stringify(data);
+    
+    // 更新按钮显示
+    updatePriorityButtonDisplay();
+    
+    // 触发自动保存（如果在编辑模式）
+    if (currentEditingTask.taskId) {
+        autoSaveTask();
+    }
+    
+    // 关闭浮层
+    closePriorityMatrix();
+}
+
+/**
+ * 更新优先级按钮显示文字
+ */
+function updatePriorityButtonDisplay() {
+    const priorityField = document.getElementById('modalTaskPriority');
+    const displayInput = document.getElementById('priorityMatrixDisplay');
+    
+    if (!priorityField || !displayInput) return;
+    
+    try {
+        let data;
+        const fieldValue = priorityField.value;
+        
+        // 处理对象类型和字符串类型
+        if (typeof fieldValue === 'object') {
+            data = fieldValue;
+        } else {
+            data = JSON.parse(fieldValue);
+        }
+        
+        const importance = data.importance || 0;
+        const urgency = data.urgency || 0;
+        
+        displayInput.value = `重要${importance.toFixed(1)}/紧急${urgency.toFixed(1)}`;
+    } catch (e) {
+        console.error('Error parsing priority:', e);
+        displayInput.value = '';
+    }
+}
+
 
