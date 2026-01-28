@@ -1106,7 +1106,7 @@ async function toggleTask(projectId, taskId) {
 }
 
 /**
- * 设置任务开始时间为当前时间
+ * 设置任务开始时间为当前时间（重置为进行中状态）
  * @param {number} projectId - 项目ID
  * @param {number} taskId - 任务ID
  */
@@ -1114,9 +1114,15 @@ async function setTaskStart(projectId, taskId) {
     try {
         const now = new Date().toISOString();
         
+        // 设置开始时间，同时清除结束时间和完成状态，重置为进行中
         const { error: updateError } = await supabaseClient
             .from('tasks')
-            .update({ actual_start_date: now })
+            .update({ 
+                actual_start_date: now,
+                actual_end_date: null,
+                actual_duration: null,
+                completed: false
+            })
             .eq('id', taskId);
         
         if (updateError) {
