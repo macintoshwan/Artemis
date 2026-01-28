@@ -791,7 +791,7 @@ async function renderProjectDetailContent() {
                 return `
                 <div class="task-item">
                     <div class="task-status-buttons">
-                        <button class="task-status-btn ${hasStarted ? 'active' : ''}" onclick="setTaskStart(${project.id}, ${task.id})">开始</button>
+                        <button class="task-status-btn" onclick="setTaskStart(${project.id}, ${task.id})">开始</button>
                         <button class="task-status-btn status-progress ${isInProgress ? 'active' : ''}" disabled>进行中</button>
                         <button class="task-status-btn ${hasEnded ? 'active' : ''}" onclick="setTaskEnd(${project.id}, ${task.id})">完成</button>
                     </div>
