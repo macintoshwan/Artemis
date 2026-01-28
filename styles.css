@@ -280,12 +280,43 @@ button:hover {
     border: var(--border-width-task) solid var(--border-module);
 }
 
-/* 任务复选框 */
-.task-item input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
+/* 任务状态按钮组 */
+.task-status-buttons {
+    display: flex;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.task-status-btn {
+    padding: 2px 6px;
+    font-size: 12px;
+    border: 1px solid var(--border-module);
+    background: var(--bg-page);
+    color: var(--text-primary);
     cursor: pointer;
-    accent-color: var(--color-warning);
+    border-radius: var(--radius-small);
+    transition: all 0.15s ease;
+}
+
+.task-status-btn:hover:not(:disabled) {
+    background: var(--bg-module);
+}
+
+.task-status-btn:disabled {
+    cursor: default;
+    opacity: 0.8;
+}
+
+.task-status-btn.active {
+    background: var(--text-primary);
+    color: var(--bg-page);
+    border-color: var(--text-primary);
+}
+
+.task-status-btn.status-progress.active {
+    background: var(--color-warning);
+    color: var(--text-on-module);
+    border-color: var(--color-warning);
 }
 
 /* 任务名称 - 黑色文字 */

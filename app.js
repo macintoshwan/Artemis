@@ -782,13 +782,23 @@ async function renderProjectDetailContent() {
     if (tasksEl) {
         tasksEl.innerHTML = project.tasks.length === 0
             ? '<div class="task-empty">暂无任务</div>'
-            : project.tasks.map(task => `
+            : project.tasks.map(task => {
+                // 判断任务状态：未开始、进行中、已完成
+                const hasStarted = !!task.actual_start_date;
+                const hasEnded = !!task.actual_end_date;
+                const isInProgress = hasStarted && !hasEnded;
+                
+                return `
                 <div class="task-item">
-                    <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${project.id}, ${task.id}); renderProjectDetailContent();">
+                    <div class="task-status-buttons">
+                        <button class="task-status-btn ${hasStarted ? 'active' : ''}" onclick="setTaskStart(${project.id}, ${task.id})">开始</button>
+                        <button class="task-status-btn status-progress ${isInProgress ? 'active' : ''}" disabled>进行中</button>
+                        <button class="task-status-btn ${hasEnded ? 'active' : ''}" onclick="setTaskEnd(${project.id}, ${task.id})">完成</button>
+                    </div>
                     <span class="task-name ${task.completed ? 'completed' : ''}" id="task-name-${task.id}" onclick="startEditTask(${project.id}, ${task.id})">${escapeHtml(task.name)}</span>
                     <button class="btn-danger" onclick="deleteTask(${project.id}, ${task.id})">删除</button>
                 </div>
-            `).join('');
+            `}).join('');
     }
 
     // 渲染任务关系图
@@ -1092,6 +1102,87 @@ async function toggleTask(projectId, taskId) {
         await renderProjects();
     } catch (err) {
         console.error('Error in toggleTask:', err);
+    }
+}
+
+/**
+ * 设置任务开始时间为当前时间
+ * @param {number} projectId - 项目ID
+ * @param {number} taskId - 任务ID
+ */
+async function setTaskStart(projectId, taskId) {
+    try {
+        const now = new Date().toISOString();
+        
+        const { error: updateError } = await supabaseClient
+            .from('tasks')
+            .update({ actual_start_date: now })
+            .eq('id', taskId);
+        
+        if (updateError) {
+            console.error('Error updating task start:', updateError);
+            return;
+        }
+        
+        await renderProjects();
+        renderProjectDetailContent();
+    } catch (err) {
+        console.error('Error in setTaskStart:', err);
+    }
+}
+
+/**
+ * 设置任务结束时间为当前时间，并标记为完成
+ * @param {number} projectId - 项目ID
+ * @param {number} taskId - 任务ID
+ */
+async function setTaskEnd(projectId, taskId) {
+    try {
+        const now = new Date().toISOString();
+        
+        // 获取任务开始时间以计算实际耗时
+        const { data: task, error: fetchError } = await supabaseClient
+            .from('tasks')
+            .select('actual_start_date')
+            .eq('id', taskId)
+            .single();
+        
+        if (fetchError) {
+            console.error('Error fetching task:', fetchError);
+            return;
+        }
+        
+        // 计算实际耗时（小时）
+        let actualDuration = null;
+        if (task.actual_start_date) {
+            const startTime = new Date(task.actual_start_date);
+            const endTime = new Date(now);
+            actualDuration = (endTime - startTime) / (1000 * 60 * 60); // 转换为小时
+            actualDuration = Math.round(actualDuration * 100) / 100; // 保留两位小数
+        }
+        
+        const updateData = { 
+            actual_end_date: now,
+            completed: true
+        };
+        if (actualDuration !== null) {
+            updateData.actual_duration = actualDuration;
+        }
+        
+        const { error: updateError } = await supabaseClient
+            .from('tasks')
+            .update(updateData)
+            .eq('id', taskId);
+        
+        if (updateError) {
+            console.error('Error updating task end:', updateError);
+            return;
+        }
+        
+        await renderProjects();
+        renderProjectDetailContent();
+    } catch (err) {
+        console.error('Error in setTaskEnd:', err);
     }
 }
 
