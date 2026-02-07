@@ -1284,7 +1284,7 @@ async function toggleTask(projectId, taskId) {
  */
 async function setTaskStatus(projectId, taskId, status) {
     try {
-        const now = new Date().toISOString();
+        const now = getLocalTimestampForDb();
         let updateData = {};
         
         switch (status) {
@@ -3219,6 +3219,18 @@ function formatLocalDateTime(date) {
     const hour = String(date.getHours()).padStart(2, '0');
     const minute = String(date.getMinutes()).padStart(2, '0');
     return `${year}-${month}-${day} ${hour}:${minute}`;
+}
+
+// 获取本地当前时间的数据库格式字符串（YYYY-MM-DD HH:MM:SS）
+function getLocalTimestampForDb() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hour = String(now.getHours()).padStart(2, '0');
+    const minute = String(now.getMinutes()).padStart(2, '0');
+    const second = String(now.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
 }
 
 // 格式化数据库时间字符串为输入框格式（处理ISO格式并转换为本地时间）
