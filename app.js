@@ -895,12 +895,12 @@ async function renderProjectDetailContent() {
     }
     
     // 格式化显示
-    const planStartStr = planStart ? planStart.toISOString().slice(0, 16).replace('T', ' ') : '—';
-    const planEndStr = planEnd ? planEnd.toISOString().slice(0, 16).replace('T', ' ') : '—';
+    const planStartStr = planStart ? formatLocalDateTime(planStart) : '—';
+    const planEndStr = planEnd ? formatLocalDateTime(planEnd) : '—';
     const planDurationStr = planDurationSum > 0 ? formatDuration(planDurationSum) : '—';
     
-    const actualStartStr = actualStart ? actualStart.toISOString().slice(0, 16).replace('T', ' ') : '—';
-    const actualEndStr = actualEnd ? actualEnd.toISOString().slice(0, 16).replace('T', ' ') : '—';
+    const actualStartStr = actualStart ? formatLocalDateTime(actualStart) : '—';
+    const actualEndStr = actualEnd ? formatLocalDateTime(actualEnd) : '—';
     const actualDurationStr = actualDurationSum > 0 ? formatDuration(actualDurationSum) : '—';
 
     // 元信息（简要展示）
@@ -2363,14 +2363,6 @@ let selectedDate = null;
 let selectedHour = null;
 let selectedMinute = null;
 
-// 返回本地时区的 YYYY-MM-DD 字符串，避免 toISOString 产生的时区偏移
-function formatDateLocal(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
-
 /**
  * 打开日期时间滚轮选择器
  * @param {string} fieldId - 要编辑的输入框ID
@@ -2393,10 +2385,10 @@ function openDateTimePicker(fieldId) {
         }
     }
     
-    // 如果没有当前值，使用今天和当前时间（本地时区）
+    // 如果没有当前值，使用今天和当前时间
     if (!initialDate) {
         const now = new Date();
-        initialDate = formatDateLocal(now);
+        initialDate = getLocalDateString(now);
         initialHour = now.getHours();
         initialMinute = Math.floor(now.getMinutes() / 5) * 5; // 向下取整到5分钟
     }
@@ -2467,13 +2459,13 @@ function generateDatePicker(initialDate) {
     for (let i = -10; i <= 20; i++) {
         const date = new Date(today);
         date.setDate(date.getDate() + i);
-        const dateStr = formatDateLocal(date);
+        const dateStr = getLocalDateString(date);
         const displayStr = formatDateDisplay(date);
         dates.push({ value: dateStr, display: displayStr });
     }
     
     // 创建选项元素
-    const todayStr = formatDateLocal(new Date()); // 获取今天日期字符串（本地时区）
+    const todayStr = getLocalDateString(new Date()); // 获取今天日期字符串
     dates.forEach(date => {
         const item = document.createElement('div');
         item.className = 'picker-item';
@@ -3103,6 +3095,24 @@ function formatDateForInput(date) {
     const day = String(date.getDate()).padStart(2, '0');
     const hour = String(date.getHours()).padStart(2, '0');
     const minute = String(Math.floor(date.getMinutes() / 5) * 5).padStart(2, '0'); // 向下取整到5分钟
+    return `${year}-${month}-${day} ${hour}:${minute}`;
+}
+
+// 获取本地日期字符串（YYYY-MM-DD 格式）
+function getLocalDateString(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+// 格式化本地日期时间为显示格式（YYYY-MM-DD HH:MM）
+function formatLocalDateTime(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hour = String(date.getHours()).padStart(2, '0');
+    const minute = String(date.getMinutes()).padStart(2, '0');
     return `${year}-${month}-${day} ${hour}:${minute}`;
 }
 
