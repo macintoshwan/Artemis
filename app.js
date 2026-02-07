@@ -637,16 +637,16 @@ async function openEditProjectModal(projectId) {
 
     // 填充表单（映射数据库字段名）
     document.getElementById('modalProjectName').value = project.name || '';
-    document.getElementById('modalPlanStartDate').value = project.plan_start_date || '';
-    document.getElementById('modalPlanEndDate').value = project.plan_end_date || '';
+    document.getElementById('modalPlanStartDate').value = formatDbTimeForInput(project.plan_start_date);
+    document.getElementById('modalPlanEndDate').value = formatDbTimeForInput(project.plan_end_date);
     
     const planDurationField = document.getElementById('modalPlanDuration');
     const planDuration = project.plan_duration ?? '';
     planDurationField.setAttribute('data-hours', planDuration);
     planDurationField.value = planDuration ? formatDuration(planDuration) : '';
     
-    document.getElementById('modalActualStartDate').value = project.actual_start_date || '';
-    document.getElementById('modalActualEndDate').value = project.actual_end_date || '';
+    document.getElementById('modalActualStartDate').value = formatDbTimeForInput(project.actual_start_date);
+    document.getElementById('modalActualEndDate').value = formatDbTimeForInput(project.actual_end_date);
     
     const actualDurationField = document.getElementById('modalActualDuration');
     const actualDuration = project.actual_duration ?? '';
@@ -1437,16 +1437,16 @@ async function openEditTaskModal(projectId, taskId) {
 
     // 填充表单数据（映射数据库字段）
     document.getElementById('modalTaskName').value = task.name || '';
-    document.getElementById('modalTaskPlanStartDate').value = task.plan_start_date || '';
-    document.getElementById('modalTaskPlanEndDate').value = task.plan_end_date || '';
+    document.getElementById('modalTaskPlanStartDate').value = formatDbTimeForInput(task.plan_start_date);
+    document.getElementById('modalTaskPlanEndDate').value = formatDbTimeForInput(task.plan_end_date);
     
     const planDurationField = document.getElementById('modalTaskPlanDuration');
     const planDuration = task.plan_duration ?? '';
     planDurationField.setAttribute('data-hours', planDuration);
     planDurationField.value = planDuration ? formatDuration(planDuration) : '';
     
-    document.getElementById('modalTaskActualStartDate').value = task.actual_start_date || '';
-    document.getElementById('modalTaskActualEndDate').value = task.actual_end_date || '';
+    document.getElementById('modalTaskActualStartDate').value = formatDbTimeForInput(task.actual_start_date);
+    document.getElementById('modalTaskActualEndDate').value = formatDbTimeForInput(task.actual_end_date);
     
     const actualDurationField = document.getElementById('modalTaskActualDuration');
     const actualDuration = task.actual_duration ?? '';
@@ -3114,6 +3114,20 @@ function formatLocalDateTime(date) {
     const hour = String(date.getHours()).padStart(2, '0');
     const minute = String(date.getMinutes()).padStart(2, '0');
     return `${year}-${month}-${day} ${hour}:${minute}`;
+}
+
+// 格式化数据库时间字符串为输入框格式（处理ISO格式并转换为本地时间）
+function formatDbTimeForInput(timeString) {
+    if (!timeString) return '';
+    try {
+        // 创建Date对象会自动将ISO格式转换为本地时区
+        const date = new Date(timeString);
+        if (isNaN(date.getTime())) return ''; // 无效日期
+        return formatLocalDateTime(date);
+    } catch (e) {
+        console.error('Error formatting time:', e);
+        return '';
+    }
 }
 
 // 格式化耗时显示为"x小时x分钟"
