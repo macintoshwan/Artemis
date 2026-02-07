@@ -1302,13 +1302,28 @@ async function setTaskStatus(projectId, taskId, status) {
                 break;
                 
             case 'in-progress':
-                // 设置实际开始时间，清除结束时间
+                // 获取当前任务数据，只在没有开始时间时设置
+                const { data: taskInProgress, error: fetchInProgressError } = await supabaseClient
+                    .from('tasks')
+                    .select('actual_start_date')
+                    .eq('id', taskId)
+                    .single();
+                
+                if (fetchInProgressError) {
+                    console.error('Error fetching task:', fetchInProgressError);
+                    return;
+                }
+                
+                // 只有当任务还没有实际开始时间时，才设置它（避免覆盖原始开始时间）
                 updateData = {
-                    actual_start_date: now,
                     actual_end_date: null,
                     actual_duration: null,
                     completed: false
                 };
+                
+                if (!taskInProgress.actual_start_date) {
+                    updateData.actual_start_date = now;
+                }
                 break;
                 
             case 'done':
@@ -1324,21 +1339,25 @@ async function setTaskStatus(projectId, taskId, status) {
                     return;
                 }
                 
+                // 如果任务没有开始时间，设置开始时间为当前时间
+                const actualStartDate = task.actual_start_date || now;
+                
                 // 计算实际耗时（小时）
                 let actualDuration = null;
-                if (task.actual_start_date) {
-                    const startTime = new Date(task.actual_start_date);
-                    const endTime = new Date(now);
-                    actualDuration = (endTime - startTime) / (1000 * 60 * 60);
-                    actualDuration = Math.round(actualDuration * 100) / 100;
-                }
+                const startTime = new Date(actualStartDate);
+                const endTime = new Date(now);
+                actualDuration = (endTime - startTime) / (1000 * 60 * 60);
+                actualDuration = Math.round(actualDuration * 100) / 100;
                 
                 updateData = {
                     actual_end_date: now,
-                    completed: true
+                    completed: true,
+                    actual_duration: actualDuration
                 };
-                if (actualDuration !== null) {
-                    updateData.actual_duration = actualDuration;
+                
+                // 如果之前没有开始时间，现在设置它
+                if (!task.actual_start_date) {
+                    updateData.actual_start_date = now;
                 }
                 break;
         }
