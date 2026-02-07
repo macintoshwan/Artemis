@@ -241,6 +241,15 @@ function setupRealtimeSubscription() {
                 if (currentDetailProjectId) {
                     await renderProjectDetailContent();
                 }
+                
+                // 如果当前正在编辑的任务被更新了，刷新编辑浮层数据
+                if (currentEditingTask.taskId && payload.new && payload.new.id === currentEditingTask.taskId) {
+                    console.log('Refreshing edit modal for task', currentEditingTask.taskId);
+                    // 延迟一小段时间，避免与当前的保存操作冲突
+                    setTimeout(async () => {
+                        await refreshEditTaskModal();
+                    }, 300);
+                }
             }
         )
         .subscribe((status) => {
@@ -527,15 +536,21 @@ async function confirmCreateProject() {
     if (currentEditingProjectId) {
         // 编辑项目模式：更新已有项目
         try {
+            // 将本地时间转换为 UTC 格式
+            const planStartUtc = convertLocalTimeToUtc(planStartDate);
+            const planEndUtc = convertLocalTimeToUtc(planEndDate);
+            const actualStartUtc = convertLocalTimeToUtc(actualStartDate);
+            const actualEndUtc = convertLocalTimeToUtc(actualEndDate);
+            
             const { error } = await supabaseClient
                 .from('projects')
                 .update({
                     name,
-                    plan_start_date: planStartDate || null,
-                    plan_end_date: planEndDate || null,
+                    plan_start_date: planStartUtc,
+                    plan_end_date: planEndUtc,
                     plan_duration: planDuration,
-                    actual_start_date: actualStartDate || null,
-                    actual_end_date: actualEndDate || null,
+                    actual_start_date: actualStartUtc,
+                    actual_end_date: actualEndUtc,
                     actual_duration: actualDuration,
                     priority,
                     category,
@@ -556,15 +571,21 @@ async function confirmCreateProject() {
         }
     } else {
         // 新建项目模式 - 添加 user_id
+        // 将本地时间转换为 UTC 格式
+        const planStartUtc = convertLocalTimeToUtc(planStartDate);
+        const planEndUtc = convertLocalTimeToUtc(planEndDate);
+        const actualStartUtc = convertLocalTimeToUtc(actualStartDate);
+        const actualEndUtc = convertLocalTimeToUtc(actualEndDate);
+        
         const newProject = {
             id: Date.now(),
             user_id: currentUser.id,  // 关键：添加用户ID
             name,
-            plan_start_date: planStartDate || null,
-            plan_end_date: planEndDate || null,
+            plan_start_date: planStartUtc,
+            plan_end_date: planEndUtc,
             plan_duration: planDuration,
-            actual_start_date: actualStartDate || null,
-            actual_end_date: actualEndDate || null,
+            actual_start_date: actualStartUtc,
+            actual_end_date: actualEndUtc,
             actual_duration: actualDuration,
             priority,
             category,
@@ -637,16 +658,16 @@ async function openEditProjectModal(projectId) {
 
     // 填充表单（映射数据库字段名）
     document.getElementById('modalProjectName').value = project.name || '';
-    document.getElementById('modalPlanStartDate').value = project.plan_start_date || '';
-    document.getElementById('modalPlanEndDate').value = project.plan_end_date || '';
+    document.getElementById('modalPlanStartDate').value = formatDbTimeForInput(project.plan_start_date);
+    document.getElementById('modalPlanEndDate').value = formatDbTimeForInput(project.plan_end_date);
     
     const planDurationField = document.getElementById('modalPlanDuration');
     const planDuration = project.plan_duration ?? '';
     planDurationField.setAttribute('data-hours', planDuration);
     planDurationField.value = planDuration ? formatDuration(planDuration) : '';
     
-    document.getElementById('modalActualStartDate').value = project.actual_start_date || '';
-    document.getElementById('modalActualEndDate').value = project.actual_end_date || '';
+    document.getElementById('modalActualStartDate').value = formatDbTimeForInput(project.actual_start_date);
+    document.getElementById('modalActualEndDate').value = formatDbTimeForInput(project.actual_end_date);
     
     const actualDurationField = document.getElementById('modalActualDuration');
     const actualDuration = project.actual_duration ?? '';
@@ -895,12 +916,12 @@ async function renderProjectDetailContent() {
     }
     
     // 格式化显示
-    const planStartStr = planStart ? planStart.toISOString().slice(0, 16).replace('T', ' ') : '—';
-    const planEndStr = planEnd ? planEnd.toISOString().slice(0, 16).replace('T', ' ') : '—';
+    const planStartStr = planStart ? formatLocalDateTime(planStart) : '—';
+    const planEndStr = planEnd ? formatLocalDateTime(planEnd) : '—';
     const planDurationStr = planDurationSum > 0 ? formatDuration(planDurationSum) : '—';
     
-    const actualStartStr = actualStart ? actualStart.toISOString().slice(0, 16).replace('T', ' ') : '—';
-    const actualEndStr = actualEnd ? actualEnd.toISOString().slice(0, 16).replace('T', ' ') : '—';
+    const actualStartStr = actualStart ? formatLocalDateTime(actualStart) : '—';
+    const actualEndStr = actualEnd ? formatLocalDateTime(actualEnd) : '—';
     const actualDurationStr = actualDurationSum > 0 ? formatDuration(actualDurationSum) : '—';
 
     // 元信息（简要展示）
@@ -1275,7 +1296,7 @@ async function toggleTask(projectId, taskId) {
  */
 async function setTaskStatus(projectId, taskId, status) {
     try {
-        const now = new Date().toISOString();
+        const now = getUtcTimestampForDb();
         let updateData = {};
         
         switch (status) {
@@ -1302,28 +1323,13 @@ async function setTaskStatus(projectId, taskId, status) {
                 break;
                 
             case 'in-progress':
-                // 获取当前任务数据，只在没有开始时间时设置
-                const { data: taskInProgress, error: fetchInProgressError } = await supabaseClient
-                    .from('tasks')
-                    .select('actual_start_date')
-                    .eq('id', taskId)
-                    .single();
-                
-                if (fetchInProgressError) {
-                    console.error('Error fetching task:', fetchInProgressError);
-                    return;
-                }
-                
-                // 只有当任务还没有实际开始时间时，才设置它（避免覆盖原始开始时间）
+                // 总是设置实际开始时间为当前时间（覆盖原值）
                 updateData = {
+                    actual_start_date: now,
                     actual_end_date: null,
                     actual_duration: null,
                     completed: false
                 };
-                
-                if (!taskInProgress.actual_start_date) {
-                    updateData.actual_start_date = now;
-                }
                 break;
                 
             case 'done':
@@ -1437,16 +1443,16 @@ async function openEditTaskModal(projectId, taskId) {
 
     // 填充表单数据（映射数据库字段）
     document.getElementById('modalTaskName').value = task.name || '';
-    document.getElementById('modalTaskPlanStartDate').value = task.plan_start_date || '';
-    document.getElementById('modalTaskPlanEndDate').value = task.plan_end_date || '';
+    document.getElementById('modalTaskPlanStartDate').value = formatDbTimeForInput(task.plan_start_date);
+    document.getElementById('modalTaskPlanEndDate').value = formatDbTimeForInput(task.plan_end_date);
     
     const planDurationField = document.getElementById('modalTaskPlanDuration');
     const planDuration = task.plan_duration ?? '';
     planDurationField.setAttribute('data-hours', planDuration);
     planDurationField.value = planDuration ? formatDuration(planDuration) : '';
     
-    document.getElementById('modalTaskActualStartDate').value = task.actual_start_date || '';
-    document.getElementById('modalTaskActualEndDate').value = task.actual_end_date || '';
+    document.getElementById('modalTaskActualStartDate').value = formatDbTimeForInput(task.actual_start_date);
+    document.getElementById('modalTaskActualEndDate').value = formatDbTimeForInput(task.actual_end_date);
     
     const actualDurationField = document.getElementById('modalTaskActualDuration');
     const actualDuration = task.actual_duration ?? '';
@@ -1541,6 +1547,86 @@ function closeEditTaskModal() {
     // 如果需要，重新打开项目详情浮层
     if (shouldReturnToDetail) {
         openProjectDetailModal(shouldReturnToDetail);
+    }
+}
+
+/**
+ * 刷新任务编辑浮层数据（不关闭浮层）
+ */
+async function refreshEditTaskModal() {
+    if (!currentEditingTask.taskId || !currentEditingTask.projectId) return;
+    
+    // 检查浮层是否打开
+    const modal = document.getElementById('editTaskModal');
+    if (!modal || modal.style.display !== 'flex') return;
+    
+    try {
+        const projects = await getProjects();
+        const project = projects.find(p => p.id === currentEditingTask.projectId);
+        const task = project?.tasks.find(t => t.id === currentEditingTask.taskId);
+        
+        if (!task) {
+            console.warn('Task not found, closing modal');
+            closeEditTaskModal();
+            return;
+        }
+        
+        // 只刷新那些不是当前焦点的字段，避免干扰用户输入
+        const activeElement = document.activeElement;
+        
+        const updateField = (fieldId, newValue) => {
+            const field = document.getElementById(fieldId);
+            // 如果字段不是当前焦点，才更新
+            if (field && field !== activeElement) {
+                field.value = newValue;
+            }
+        };
+        
+        // 刷新各个字段
+        updateField('modalTaskName', task.name || '');
+        updateField('modalTaskPlanStartDate', formatDbTimeForInput(task.plan_start_date));
+        updateField('modalTaskPlanEndDate', formatDbTimeForInput(task.plan_end_date));
+        
+        const planDurationField = document.getElementById('modalTaskPlanDuration');
+        if (planDurationField && planDurationField !== activeElement) {
+            const planDuration = task.plan_duration ?? '';
+            planDurationField.setAttribute('data-hours', planDuration);
+            planDurationField.value = planDuration ? formatDuration(planDuration) : '';
+        }
+        
+        updateField('modalTaskActualStartDate', formatDbTimeForInput(task.actual_start_date));
+        updateField('modalTaskActualEndDate', formatDbTimeForInput(task.actual_end_date));
+        
+        const actualDurationField = document.getElementById('modalTaskActualDuration');
+        if (actualDurationField && actualDurationField !== activeElement) {
+            const actualDuration = task.actual_duration ?? '';
+            actualDurationField.setAttribute('data-hours', actualDuration);
+            actualDurationField.value = actualDuration ? formatDuration(actualDuration) : '';
+        }
+        
+        // 更新优先级
+        let priorityValue;
+        if (typeof task.priority === 'object' && task.priority !== null) {
+            priorityValue = JSON.stringify(task.priority);
+        } else if (typeof task.priority === 'string') {
+            priorityValue = task.priority || '{"importance": 0, "urgency": 0}';
+        } else {
+            priorityValue = '{"importance": 0, "urgency": 0}';
+        }
+        updateField('modalTaskPriority', priorityValue);
+        updatePriorityButtonDisplay();
+        
+        updateField('modalTaskCategory', task.category || '工作');
+        updateField('modalTaskBounty', task.bounty || 0);
+        updateField('modalTaskCompleted', task.completed ? 'true' : 'false');
+        updateField('modalTaskDescription', task.description || '');
+        
+        // 更新相对时间显示
+        updateTaskRelativeTimes();
+        
+        console.log('Edit modal refreshed for task', currentEditingTask.taskId);
+    } catch (err) {
+        console.error('Error refreshing edit modal:', err);
     }
 }
 
@@ -1646,6 +1732,12 @@ async function confirmAddTask() {
     }
 
     try {
+        // 将本地时间转换为 UTC 格式
+        const planStartUtc = convertLocalTimeToUtc(planStartDate);
+        const planEndUtc = convertLocalTimeToUtc(planEndDate);
+        const actualStartUtc = convertLocalTimeToUtc(actualStartDate);
+        const actualEndUtc = convertLocalTimeToUtc(actualEndDate);
+        
         // 新建任务直接插入数据库 - 添加 user_id
         const { error } = await supabaseClient
             .from('tasks')
@@ -1654,11 +1746,11 @@ async function confirmAddTask() {
                 project_id: currentEditingTask.projectId,
                 user_id: currentUser.id,  // 关键：添加用户ID
                 name,
-                plan_start_date: planStartDate || null,
-                plan_end_date: planEndDate || null,
+                plan_start_date: planStartUtc,
+                plan_end_date: planEndUtc,
                 plan_duration: planDuration,
-                actual_start_date: actualStartDate || null,
-                actual_end_date: actualEndDate || null,
+                actual_start_date: actualStartUtc,
+                actual_end_date: actualEndUtc,
                 actual_duration: actualDuration,
                 priority,
                 category,
@@ -2207,15 +2299,21 @@ async function autoSaveProject() {
     
     // 优化：直接更新数据库，而不是先读取所有项目
     try {
+        // 将本地时间转换为 UTC 格式
+        const planStartUtc = convertLocalTimeToUtc(planStartDate);
+        const planEndUtc = convertLocalTimeToUtc(planEndDate);
+        const actualStartUtc = convertLocalTimeToUtc(actualStartDate);
+        const actualEndUtc = convertLocalTimeToUtc(actualEndDate);
+        
         const { error } = await supabaseClient
             .from('projects')
             .update({
                 name,
-                plan_start_date: planStartDate || null,
-                plan_end_date: planEndDate || null,
+                plan_start_date: planStartUtc,
+                plan_end_date: planEndUtc,
                 plan_duration: planDuration,
-                actual_start_date: actualStartDate || null,
-                actual_end_date: actualEndDate || null,
+                actual_start_date: actualStartUtc,
+                actual_end_date: actualEndUtc,
                 actual_duration: actualDuration,
                 priority,
                 category,
@@ -2318,16 +2416,27 @@ async function autoSaveTask() {
     const description = document.getElementById('modalTaskDescription').value;
     
     try {
+        console.log('AutoSaveTask: Saving task', currentEditingTask.taskId, {
+            planStartDate,
+            planEndDate
+        });
+        
+        // 将本地时间转换为 UTC 格式（数据库存储 UTC 时间）
+        const planStartUtc = convertLocalTimeToUtc(planStartDate);
+        const planEndUtc = convertLocalTimeToUtc(planEndDate);
+        const actualStartUtc = convertLocalTimeToUtc(actualStartDate);
+        const actualEndUtc = convertLocalTimeToUtc(actualEndDate);
+        
         // 直接更新数据库中的任务
         const { error } = await supabaseClient
             .from('tasks')
             .update({
                 name,
-                plan_start_date: planStartDate || null,
-                plan_end_date: planEndDate || null,
+                plan_start_date: planStartUtc,
+                plan_end_date: planEndUtc,
                 plan_duration: planDuration,
-                actual_start_date: actualStartDate || null,
-                actual_end_date: actualEndDate || null,
+                actual_start_date: actualStartUtc,
+                actual_end_date: actualEndUtc,
                 actual_duration: actualDuration,
                 priority,
                 category,
@@ -2339,8 +2448,12 @@ async function autoSaveTask() {
         
         if (error) {
             console.error('Error saving task:', error);
+            // 可选：显示错误提示
+            // alert('保存失败：' + error.message);
             return;
         }
+        
+        console.log('AutoSaveTask: Task saved successfully');
         
         // 移除手动渲染，依赖 Realtime 订阅更新
         // Supabase 的 Realtime 功能会自动触发 renderProjects 和 renderProjectDetailContent
@@ -2388,7 +2501,7 @@ function openDateTimePicker(fieldId) {
     // 如果没有当前值，使用今天和当前时间
     if (!initialDate) {
         const now = new Date();
-        initialDate = now.toISOString().split('T')[0];
+        initialDate = getLocalDateString(now);
         initialHour = now.getHours();
         initialMinute = Math.floor(now.getMinutes() / 5) * 5; // 向下取整到5分钟
     }
@@ -2429,9 +2542,16 @@ function confirmDateTimePicker() {
     // 设置值到输入框
     const field = document.getElementById(currentDateTimeFieldId);
     if (field) {
+        const oldValue = field.value;
         field.value = formattedValue;
         
-        // 触发自动保存
+        // 手动触发 change 事件（确保事件监听器被触发）
+        if (oldValue !== formattedValue) {
+            const changeEvent = new Event('change', { bubbles: true });
+            field.dispatchEvent(changeEvent);
+        }
+        
+        // 触发自动保存（双重保险）
         if (currentDateTimeFieldId.startsWith('modalTask')) {
             autoSaveTask();
             updateTaskRelativeTimes();
@@ -2459,13 +2579,13 @@ function generateDatePicker(initialDate) {
     for (let i = -10; i <= 20; i++) {
         const date = new Date(today);
         date.setDate(date.getDate() + i);
-        const dateStr = date.toISOString().split('T')[0];
+        const dateStr = getLocalDateString(date);
         const displayStr = formatDateDisplay(date);
         dates.push({ value: dateStr, display: displayStr });
     }
     
     // 创建选项元素
-    const todayStr = new Date().toISOString().split('T')[0]; // 获取今天日期字符串
+    const todayStr = getLocalDateString(new Date()); // 获取今天日期字符串
     dates.forEach(date => {
         const item = document.createElement('div');
         item.className = 'picker-item';
@@ -3096,6 +3216,59 @@ function formatDateForInput(date) {
     const hour = String(date.getHours()).padStart(2, '0');
     const minute = String(Math.floor(date.getMinutes() / 5) * 5).padStart(2, '0'); // 向下取整到5分钟
     return `${year}-${month}-${day} ${hour}:${minute}`;
+}
+
+// 获取本地日期字符串（YYYY-MM-DD 格式）
+function getLocalDateString(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+// 格式化本地日期时间为显示格式（YYYY-MM-DD HH:MM）
+function formatLocalDateTime(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hour = String(date.getHours()).padStart(2, '0');
+    const minute = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hour}:${minute}`;
+}
+
+// 获取当前 UTC 时间的 ISO 格式字符串（用于存储到数据库）
+function getUtcTimestampForDb() {
+    return new Date().toISOString();
+}
+
+// 将本地时间字符串转换为 UTC ISO 格式（用于保存到数据库）
+function convertLocalTimeToUtc(localTimeString) {
+    if (!localTimeString) return null;
+    try {
+        // 解析本地时间字符串（格式：YYYY-MM-DD HH:MM）
+        // new Date() 会将其解释为本地时间
+        const localDate = new Date(localTimeString);
+        if (isNaN(localDate.getTime())) return null;
+        // 转换为 UTC ISO 格式
+        return localDate.toISOString();
+    } catch (e) {
+        console.error('Error converting local time to UTC:', e);
+        return null;
+    }
+}
+
+// 格式化数据库时间字符串为输入框格式（处理ISO格式并转换为本地时间）
+function formatDbTimeForInput(timeString) {
+    if (!timeString) return '';
+    try {
+        // 创建Date对象会自动将ISO格式转换为本地时区
+        const date = new Date(timeString);
+        if (isNaN(date.getTime())) return ''; // 无效日期
+        return formatLocalDateTime(date);
+    } catch (e) {
+        console.error('Error formatting time:', e);
+        return '';
+    }
 }
 
 // 格式化耗时显示为"x小时x分钟"
