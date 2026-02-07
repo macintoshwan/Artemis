@@ -2363,6 +2363,14 @@ let selectedDate = null;
 let selectedHour = null;
 let selectedMinute = null;
 
+// 返回本地时区的 YYYY-MM-DD 字符串，避免 toISOString 产生的时区偏移
+function formatDateLocal(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 /**
  * 打开日期时间滚轮选择器
  * @param {string} fieldId - 要编辑的输入框ID
@@ -2385,10 +2393,10 @@ function openDateTimePicker(fieldId) {
         }
     }
     
-    // 如果没有当前值，使用今天和当前时间
+    // 如果没有当前值，使用今天和当前时间（本地时区）
     if (!initialDate) {
         const now = new Date();
-        initialDate = now.toISOString().split('T')[0];
+        initialDate = formatDateLocal(now);
         initialHour = now.getHours();
         initialMinute = Math.floor(now.getMinutes() / 5) * 5; // 向下取整到5分钟
     }
@@ -2459,13 +2467,13 @@ function generateDatePicker(initialDate) {
     for (let i = -10; i <= 20; i++) {
         const date = new Date(today);
         date.setDate(date.getDate() + i);
-        const dateStr = date.toISOString().split('T')[0];
+        const dateStr = formatDateLocal(date);
         const displayStr = formatDateDisplay(date);
         dates.push({ value: dateStr, display: displayStr });
     }
     
     // 创建选项元素
-    const todayStr = new Date().toISOString().split('T')[0]; // 获取今天日期字符串
+    const todayStr = formatDateLocal(new Date()); // 获取今天日期字符串（本地时区）
     dates.forEach(date => {
         const item = document.createElement('div');
         item.className = 'picker-item';
