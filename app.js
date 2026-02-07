@@ -1323,28 +1323,13 @@ async function setTaskStatus(projectId, taskId, status) {
                 break;
                 
             case 'in-progress':
-                // 获取当前任务数据，只在没有开始时间时设置
-                const { data: taskInProgress, error: fetchInProgressError } = await supabaseClient
-                    .from('tasks')
-                    .select('actual_start_date')
-                    .eq('id', taskId)
-                    .single();
-                
-                if (fetchInProgressError) {
-                    console.error('Error fetching task:', fetchInProgressError);
-                    return;
-                }
-                
-                // 只有当任务还没有实际开始时间时，才设置它（避免覆盖原始开始时间）
+                // 总是设置实际开始时间为当前时间（覆盖原值）
                 updateData = {
+                    actual_start_date: now,
                     actual_end_date: null,
                     actual_duration: null,
                     completed: false
                 };
-                
-                if (!taskInProgress.actual_start_date) {
-                    updateData.actual_start_date = now;
-                }
                 break;
                 
             case 'done':
