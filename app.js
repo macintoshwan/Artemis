@@ -536,15 +536,21 @@ async function confirmCreateProject() {
     if (currentEditingProjectId) {
         // 编辑项目模式：更新已有项目
         try {
+            // 将本地时间转换为 UTC 格式
+            const planStartUtc = convertLocalTimeToUtc(planStartDate);
+            const planEndUtc = convertLocalTimeToUtc(planEndDate);
+            const actualStartUtc = convertLocalTimeToUtc(actualStartDate);
+            const actualEndUtc = convertLocalTimeToUtc(actualEndDate);
+            
             const { error } = await supabaseClient
                 .from('projects')
                 .update({
                     name,
-                    plan_start_date: planStartDate || null,
-                    plan_end_date: planEndDate || null,
+                    plan_start_date: planStartUtc,
+                    plan_end_date: planEndUtc,
                     plan_duration: planDuration,
-                    actual_start_date: actualStartDate || null,
-                    actual_end_date: actualEndDate || null,
+                    actual_start_date: actualStartUtc,
+                    actual_end_date: actualEndUtc,
                     actual_duration: actualDuration,
                     priority,
                     category,
@@ -565,15 +571,21 @@ async function confirmCreateProject() {
         }
     } else {
         // 新建项目模式 - 添加 user_id
+        // 将本地时间转换为 UTC 格式
+        const planStartUtc = convertLocalTimeToUtc(planStartDate);
+        const planEndUtc = convertLocalTimeToUtc(planEndDate);
+        const actualStartUtc = convertLocalTimeToUtc(actualStartDate);
+        const actualEndUtc = convertLocalTimeToUtc(actualEndDate);
+        
         const newProject = {
             id: Date.now(),
             user_id: currentUser.id,  // 关键：添加用户ID
             name,
-            plan_start_date: planStartDate || null,
-            plan_end_date: planEndDate || null,
+            plan_start_date: planStartUtc,
+            plan_end_date: planEndUtc,
             plan_duration: planDuration,
-            actual_start_date: actualStartDate || null,
-            actual_end_date: actualEndDate || null,
+            actual_start_date: actualStartUtc,
+            actual_end_date: actualEndUtc,
             actual_duration: actualDuration,
             priority,
             category,
@@ -1284,7 +1296,7 @@ async function toggleTask(projectId, taskId) {
  */
 async function setTaskStatus(projectId, taskId, status) {
     try {
-        const now = getLocalTimestampForDb();
+        const now = getUtcTimestampForDb();
         let updateData = {};
         
         switch (status) {
@@ -1735,6 +1747,12 @@ async function confirmAddTask() {
     }
 
     try {
+        // 将本地时间转换为 UTC 格式
+        const planStartUtc = convertLocalTimeToUtc(planStartDate);
+        const planEndUtc = convertLocalTimeToUtc(planEndDate);
+        const actualStartUtc = convertLocalTimeToUtc(actualStartDate);
+        const actualEndUtc = convertLocalTimeToUtc(actualEndDate);
+        
         // 新建任务直接插入数据库 - 添加 user_id
         const { error } = await supabaseClient
             .from('tasks')
@@ -1743,11 +1761,11 @@ async function confirmAddTask() {
                 project_id: currentEditingTask.projectId,
                 user_id: currentUser.id,  // 关键：添加用户ID
                 name,
-                plan_start_date: planStartDate || null,
-                plan_end_date: planEndDate || null,
+                plan_start_date: planStartUtc,
+                plan_end_date: planEndUtc,
                 plan_duration: planDuration,
-                actual_start_date: actualStartDate || null,
-                actual_end_date: actualEndDate || null,
+                actual_start_date: actualStartUtc,
+                actual_end_date: actualEndUtc,
                 actual_duration: actualDuration,
                 priority,
                 category,
@@ -2296,15 +2314,21 @@ async function autoSaveProject() {
     
     // 优化：直接更新数据库，而不是先读取所有项目
     try {
+        // 将本地时间转换为 UTC 格式
+        const planStartUtc = convertLocalTimeToUtc(planStartDate);
+        const planEndUtc = convertLocalTimeToUtc(planEndDate);
+        const actualStartUtc = convertLocalTimeToUtc(actualStartDate);
+        const actualEndUtc = convertLocalTimeToUtc(actualEndDate);
+        
         const { error } = await supabaseClient
             .from('projects')
             .update({
                 name,
-                plan_start_date: planStartDate || null,
-                plan_end_date: planEndDate || null,
+                plan_start_date: planStartUtc,
+                plan_end_date: planEndUtc,
                 plan_duration: planDuration,
-                actual_start_date: actualStartDate || null,
-                actual_end_date: actualEndDate || null,
+                actual_start_date: actualStartUtc,
+                actual_end_date: actualEndUtc,
                 actual_duration: actualDuration,
                 priority,
                 category,
@@ -2412,16 +2436,22 @@ async function autoSaveTask() {
             planEndDate
         });
         
+        // 将本地时间转换为 UTC 格式（数据库存储 UTC 时间）
+        const planStartUtc = convertLocalTimeToUtc(planStartDate);
+        const planEndUtc = convertLocalTimeToUtc(planEndDate);
+        const actualStartUtc = convertLocalTimeToUtc(actualStartDate);
+        const actualEndUtc = convertLocalTimeToUtc(actualEndDate);
+        
         // 直接更新数据库中的任务
         const { error } = await supabaseClient
             .from('tasks')
             .update({
                 name,
-                plan_start_date: planStartDate || null,
-                plan_end_date: planEndDate || null,
+                plan_start_date: planStartUtc,
+                plan_end_date: planEndUtc,
                 plan_duration: planDuration,
-                actual_start_date: actualStartDate || null,
-                actual_end_date: actualEndDate || null,
+                actual_start_date: actualStartUtc,
+                actual_end_date: actualEndUtc,
                 actual_duration: actualDuration,
                 priority,
                 category,
@@ -3221,16 +3251,25 @@ function formatLocalDateTime(date) {
     return `${year}-${month}-${day} ${hour}:${minute}`;
 }
 
-// 获取本地当前时间的数据库格式字符串（YYYY-MM-DD HH:MM:SS）
-function getLocalTimestampForDb() {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const hour = String(now.getHours()).padStart(2, '0');
-    const minute = String(now.getMinutes()).padStart(2, '0');
-    const second = String(now.getSeconds()).padStart(2, '0');
-    return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+// 获取当前 UTC 时间的 ISO 格式字符串（用于存储到数据库）
+function getUtcTimestampForDb() {
+    return new Date().toISOString();
+}
+
+// 将本地时间字符串转换为 UTC ISO 格式（用于保存到数据库）
+function convertLocalTimeToUtc(localTimeString) {
+    if (!localTimeString) return null;
+    try {
+        // 解析本地时间字符串（格式：YYYY-MM-DD HH:MM）
+        // new Date() 会将其解释为本地时间
+        const localDate = new Date(localTimeString);
+        if (isNaN(localDate.getTime())) return null;
+        // 转换为 UTC ISO 格式
+        return localDate.toISOString();
+    } catch (e) {
+        console.error('Error converting local time to UTC:', e);
+        return null;
+    }
 }
 
 // 格式化数据库时间字符串为输入框格式（处理ISO格式并转换为本地时间）
