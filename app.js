@@ -1013,6 +1013,12 @@ async function openAddTaskForProject(projectId) {    // 关闭项目详情浮层
     document.getElementById('modalTaskDescription').value = ''; // 清空详情
     selectedPrerequisites = []; // 清空已选前置任务
 
+    // 清空任务ID和项目ID的dataset（避免读取到上次编辑的旧值）
+    const taskNameField = document.getElementById('modalTaskName');
+    taskNameField.dataset.taskId = '';
+    taskNameField.dataset.projectId = projectId;
+
+
     // 修改标题为“添加任务”并显示
     const modal = document.getElementById('editTaskModal');
     const titleEl = modal.querySelector('.modal-title');
@@ -3104,14 +3110,20 @@ function formatDuration(hours) {
  * 打开任务关联设置浮层
  */
 async function openTaskDependencyModal() {
-    // 保存当前编辑的任务信息
-    const taskNameField = document.getElementById('modalTaskName');
-    if (taskNameField && taskNameField.dataset.taskId) {
-        currentEditingTaskId = parseInt(taskNameField.dataset.taskId);
-        currentEditingTaskProjectId = parseInt(taskNameField.dataset.projectId);
+    // 优先使用 currentEditingTask（支持新建任务场景），其次才使用 dataset
+    if (currentEditingTask.projectId !== null && currentEditingTask.projectId !== undefined) {
+        currentEditingTaskId = currentEditingTask.taskId; // 新建任务时为 null
+        currentEditingTaskProjectId = currentEditingTask.projectId;
     } else {
-        alert('无法获取任务信息，请重新打开任务编辑页面');
-        return;
+        // 备用方案：从 dataset 读取（用于兼容旧代码）
+        const taskNameField = document.getElementById('modalTaskName');
+        if (taskNameField && taskNameField.dataset.taskId) {
+            currentEditingTaskId = parseInt(taskNameField.dataset.taskId);
+            currentEditingTaskProjectId = parseInt(taskNameField.dataset.projectId);
+        } else {
+            alert('无法获取任务信息，请重新打开任务编辑页面');
+            return;
+        }
     }
     
     // 获取最新的项目数据
