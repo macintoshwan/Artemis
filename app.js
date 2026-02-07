@@ -241,6 +241,15 @@ function setupRealtimeSubscription() {
                 if (currentDetailProjectId) {
                     await renderProjectDetailContent();
                 }
+                
+                // 如果当前正在编辑的任务被更新了，刷新编辑浮层数据
+                if (currentEditingTask.taskId && payload.new && payload.new.id === currentEditingTask.taskId) {
+                    console.log('Refreshing edit modal for task', currentEditingTask.taskId);
+                    // 延迟一小段时间，避免与当前的保存操作冲突
+                    setTimeout(async () => {
+                        await refreshEditTaskModal();
+                    }, 300);
+                }
             }
         )
         .subscribe((status) => {
@@ -1545,6 +1554,86 @@ function closeEditTaskModal() {
 }
 
 /**
+ * 刷新任务编辑浮层数据（不关闭浮层）
+ */
+async function refreshEditTaskModal() {
+    if (!currentEditingTask.taskId || !currentEditingTask.projectId) return;
+    
+    // 检查浮层是否打开
+    const modal = document.getElementById('editTaskModal');
+    if (!modal || modal.style.display !== 'flex') return;
+    
+    try {
+        const projects = await getProjects();
+        const project = projects.find(p => p.id === currentEditingTask.projectId);
+        const task = project?.tasks.find(t => t.id === currentEditingTask.taskId);
+        
+        if (!task) {
+            console.warn('Task not found, closing modal');
+            closeEditTaskModal();
+            return;
+        }
+        
+        // 只刷新那些不是当前焦点的字段，避免干扰用户输入
+        const activeElement = document.activeElement;
+        
+        const updateField = (fieldId, newValue) => {
+            const field = document.getElementById(fieldId);
+            // 如果字段不是当前焦点，才更新
+            if (field && field !== activeElement) {
+                field.value = newValue;
+            }
+        };
+        
+        // 刷新各个字段
+        updateField('modalTaskName', task.name || '');
+        updateField('modalTaskPlanStartDate', formatDbTimeForInput(task.plan_start_date));
+        updateField('modalTaskPlanEndDate', formatDbTimeForInput(task.plan_end_date));
+        
+        const planDurationField = document.getElementById('modalTaskPlanDuration');
+        if (planDurationField && planDurationField !== activeElement) {
+            const planDuration = task.plan_duration ?? '';
+            planDurationField.setAttribute('data-hours', planDuration);
+            planDurationField.value = planDuration ? formatDuration(planDuration) : '';
+        }
+        
+        updateField('modalTaskActualStartDate', formatDbTimeForInput(task.actual_start_date));
+        updateField('modalTaskActualEndDate', formatDbTimeForInput(task.actual_end_date));
+        
+        const actualDurationField = document.getElementById('modalTaskActualDuration');
+        if (actualDurationField && actualDurationField !== activeElement) {
+            const actualDuration = task.actual_duration ?? '';
+            actualDurationField.setAttribute('data-hours', actualDuration);
+            actualDurationField.value = actualDuration ? formatDuration(actualDuration) : '';
+        }
+        
+        // 更新优先级
+        let priorityValue;
+        if (typeof task.priority === 'object' && task.priority !== null) {
+            priorityValue = JSON.stringify(task.priority);
+        } else if (typeof task.priority === 'string') {
+            priorityValue = task.priority || '{"importance": 0, "urgency": 0}';
+        } else {
+            priorityValue = '{"importance": 0, "urgency": 0}';
+        }
+        updateField('modalTaskPriority', priorityValue);
+        updatePriorityButtonDisplay();
+        
+        updateField('modalTaskCategory', task.category || '工作');
+        updateField('modalTaskBounty', task.bounty || 0);
+        updateField('modalTaskCompleted', task.completed ? 'true' : 'false');
+        updateField('modalTaskDescription', task.description || '');
+        
+        // 更新相对时间显示
+        updateTaskRelativeTimes();
+        
+        console.log('Edit modal refreshed for task', currentEditingTask.taskId);
+    } catch (err) {
+        console.error('Error refreshing edit modal:', err);
+    }
+}
+
+/**
  * 确认保存任务编辑
  * 修复：添加 async/await 正确处理异步操作
  */
@@ -2318,6 +2407,11 @@ async function autoSaveTask() {
     const description = document.getElementById('modalTaskDescription').value;
     
     try {
+        console.log('AutoSaveTask: Saving task', currentEditingTask.taskId, {
+            planStartDate,
+            planEndDate
+        });
+        
         // 直接更新数据库中的任务
         const { error } = await supabaseClient
             .from('tasks')
@@ -2339,8 +2433,12 @@ async function autoSaveTask() {
         
         if (error) {
             console.error('Error saving task:', error);
+            // 可选：显示错误提示
+            // alert('保存失败：' + error.message);
             return;
         }
+        
+        console.log('AutoSaveTask: Task saved successfully');
         
         // 移除手动渲染，依赖 Realtime 订阅更新
         // Supabase 的 Realtime 功能会自动触发 renderProjects 和 renderProjectDetailContent
@@ -2429,9 +2527,16 @@ function confirmDateTimePicker() {
     // 设置值到输入框
     const field = document.getElementById(currentDateTimeFieldId);
     if (field) {
+        const oldValue = field.value;
         field.value = formattedValue;
         
-        // 触发自动保存
+        // 手动触发 change 事件（确保事件监听器被触发）
+        if (oldValue !== formattedValue) {
+            const changeEvent = new Event('change', { bubbles: true });
+            field.dispatchEvent(changeEvent);
+        }
+        
+        // 触发自动保存（双重保险）
         if (currentDateTimeFieldId.startsWith('modalTask')) {
             autoSaveTask();
             updateTaskRelativeTimes();
