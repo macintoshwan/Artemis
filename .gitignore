@@ -4,7 +4,11 @@ docs/
 node_modules/
 # 环境变量
 .env
+.env.local
+.env.*.local
 # 日志文件
 *.log
 # 本地存储的JSON数据（可选，若不想提交测试数据）
 data/
+# 构建产物
+dist/
