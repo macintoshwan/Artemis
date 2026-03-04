@@ -8,3 +8,4 @@ node_modules/
 *.log
 # 本地存储的JSON数据（可选，若不想提交测试数据）
 data/
+/dist
