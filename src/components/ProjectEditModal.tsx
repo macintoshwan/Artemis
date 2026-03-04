@@ -9,11 +9,11 @@
  * - 时间一致性验证（开始+耗时≈结束）
  */
 
-import { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { useProjectsStore, selectProject } from '../store/useProjectsStore';
 import { useProjectActions } from '../hooks/useActions';
 import { useAuth } from '../hooks/useAuth';
-import { formatRelativeTimeCN } from '../utils/formatTime';
+import { TimeFieldGroup } from './TimeFieldGroup';
 import type { Project } from '../types';
 
 // ============================================================
@@ -85,17 +85,6 @@ function projectToForm(project: Project): ProjectFormData {
     category: project.category ?? '工作',
     bounty: project.bounty !== null && project.bounty !== undefined ? String(project.bounty) : '',
   };
-}
-
-/** 检查 开始+耗时 是否约等于 结束（容差 30s） */
-function checkTimeConsistency(start: string, duration: string, end: string): boolean {
-  if (!start || !duration || !end) return true; // 三个都填才验证
-  const s = new Date(start).getTime();
-  const e = new Date(end).getTime();
-  const d = parseFloat(duration);
-  if (isNaN(s) || isNaN(e) || isNaN(d)) return true;
-  const expected = s + d * 3_600_000;
-  return Math.abs(expected - e) <= 30_000;
 }
 
 /** 修正三个值中的一个 */
@@ -210,14 +199,16 @@ export const ProjectEditModal = memo(function ProjectEditModal({
     [autoSave],
   );
 
-  // 时间一致性检查（memoised）
-  const planConsistent = useMemo(
-    () => checkTimeConsistency(form.plan_start_date, form.plan_duration, form.plan_end_date),
-    [form.plan_start_date, form.plan_duration, form.plan_end_date],
-  );
-  const actualConsistent = useMemo(
-    () => checkTimeConsistency(form.actual_start_date, form.actual_duration, form.actual_end_date),
-    [form.actual_start_date, form.actual_duration, form.actual_end_date],
+  // 时间字段变更回调（映射 TimeFieldGroup 的 field 到 form 字段）
+  const handleTimeChange = useCallback(
+    (group: 'plan' | 'actual', field: 'start' | 'duration' | 'end', value: string) => {
+      const fieldMap = {
+        plan: { start: 'plan_start_date', duration: 'plan_duration', end: 'plan_end_date' },
+        actual: { start: 'actual_start_date', duration: 'actual_duration', end: 'actual_end_date' },
+      } as const;
+      handleChange(fieldMap[group][field], value);
+    },
+    [handleChange],
   );
 
   const handleFix = useCallback(
@@ -307,105 +298,25 @@ export const ProjectEditModal = memo(function ProjectEditModal({
               />
             </div>
 
-            {/* 第二行：预计 */}
-            <div className="form-item">
-              <label>
-                预计开始
-                {!planConsistent && (
-                  <button className="btn-fix" onClick={() => handleFix('plan', 'start')} title="根据结束-耗时修正">修正</button>
-                )}
-              </label>
-              <input
-                type="datetime-local"
-                value={form.plan_start_date}
-                onChange={(e) => handleChange('plan_start_date', e.target.value)}
-              />
-              {form.plan_start_date && (
-                <span className="relative-time">{formatRelativeTimeCN(form.plan_start_date)}</span>
-              )}
-            </div>
-            <div className="form-item">
-              <label>
-                预计耗时(h)
-                {!planConsistent && (
-                  <button className="btn-fix" onClick={() => handleFix('plan', 'duration')} title="根据结束-开始修正">修正</button>
-                )}
-              </label>
-              <input
-                type="number"
-                value={form.plan_duration}
-                onChange={(e) => handleChange('plan_duration', e.target.value)}
-                placeholder="小时"
-                min="0"
-                step="0.5"
-              />
-            </div>
-            <div className="form-item">
-              <label>
-                预计结束
-                {!planConsistent && (
-                  <button className="btn-fix" onClick={() => handleFix('plan', 'end')} title="根据开始+耗时修正">修正</button>
-                )}
-              </label>
-              <input
-                type="datetime-local"
-                value={form.plan_end_date}
-                onChange={(e) => handleChange('plan_end_date', e.target.value)}
-              />
-              {form.plan_end_date && (
-                <span className="relative-time">{formatRelativeTimeCN(form.plan_end_date)}</span>
-              )}
-            </div>
+            {/* 第二行：预计时间 */}
+            <TimeFieldGroup
+              label="预计"
+              start={form.plan_start_date}
+              duration={form.plan_duration}
+              end={form.plan_end_date}
+              onChange={(field, value) => handleTimeChange('plan', field, value)}
+              onFix={(target) => handleFix('plan', target)}
+            />
 
-            {/* 第三行：实际 */}
-            <div className="form-item">
-              <label>
-                实际开始
-                {!actualConsistent && (
-                  <button className="btn-fix" onClick={() => handleFix('actual', 'start')} title="根据结束-耗时修正">修正</button>
-                )}
-              </label>
-              <input
-                type="datetime-local"
-                value={form.actual_start_date}
-                onChange={(e) => handleChange('actual_start_date', e.target.value)}
-              />
-              {form.actual_start_date && (
-                <span className="relative-time">{formatRelativeTimeCN(form.actual_start_date)}</span>
-              )}
-            </div>
-            <div className="form-item">
-              <label>
-                实际耗时(h)
-                {!actualConsistent && (
-                  <button className="btn-fix" onClick={() => handleFix('actual', 'duration')} title="根据结束-开始修正">修正</button>
-                )}
-              </label>
-              <input
-                type="number"
-                value={form.actual_duration}
-                onChange={(e) => handleChange('actual_duration', e.target.value)}
-                placeholder="小时"
-                min="0"
-                step="0.5"
-              />
-            </div>
-            <div className="form-item">
-              <label>
-                实际结束
-                {!actualConsistent && (
-                  <button className="btn-fix" onClick={() => handleFix('actual', 'end')} title="根据开始+耗时修正">修正</button>
-                )}
-              </label>
-              <input
-                type="datetime-local"
-                value={form.actual_end_date}
-                onChange={(e) => handleChange('actual_end_date', e.target.value)}
-              />
-              {form.actual_end_date && (
-                <span className="relative-time">{formatRelativeTimeCN(form.actual_end_date)}</span>
-              )}
-            </div>
+            {/* 第三行：实际时间 */}
+            <TimeFieldGroup
+              label="实际"
+              start={form.actual_start_date}
+              duration={form.actual_duration}
+              end={form.actual_end_date}
+              onChange={(field, value) => handleTimeChange('actual', field, value)}
+              onFix={(target) => handleFix('actual', target)}
+            />
 
             {/* 第四行：优先级 */}
             <div className="form-item">

@@ -5,6 +5,7 @@ export { ProjectDetail } from './ProjectDetail';
 export { TaskGraph } from './TaskGraph';
 export { TaskEditModal } from './TaskEditModal';
 export { ProjectEditModal } from './ProjectEditModal';
+export { TimeFieldGroup } from './TimeFieldGroup';
 export { PriorityMatrixPicker } from './PriorityMatrixPicker';
 export { PrerequisitePicker } from './PrerequisitePicker';
 export { BountyPicker } from './BountyPicker';

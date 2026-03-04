@@ -531,6 +531,56 @@ button:hover {
     background: rgba(224, 168, 0, 0.15);
 }
 
+/* 修正按钮预览文字 */
+.btn-fix {
+    max-width: none;
+    white-space: nowrap;
+}
+
+/* 时间提示行（相对时间 + 建议按钮） */
+.time-hint-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 18px;
+    margin-top: 2px;
+}
+
+/* 自动补全建议按钮 */
+.btn-suggest {
+    display: inline-block;
+    padding: 1px 6px;
+    font-size: 10px;
+    color: var(--color-success, #28a745);
+    background: transparent;
+    border: 1px solid var(--color-success, #28a745);
+    border-radius: 3px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.btn-suggest:hover {
+    background: rgba(40, 167, 69, 0.15);
+}
+
+/* 时间不一致警告边框 */
+.form-item input.time-warning,
+.form-item input.time-warning:focus {
+    border-color: var(--color-warning, #e0a800);
+    box-shadow: 0 0 0 1px rgba(224, 168, 0, 0.3);
+}
+
+/* 时间不一致警告条 —— 横跨三列 */
+.time-inconsistency-warning {
+    grid-column: 1 / -1;
+    padding: 6px 12px;
+    font-size: 12px;
+    color: var(--color-warning, #e0a800);
+    background: rgba(224, 168, 0, 0.08);
+    border: 1px solid rgba(224, 168, 0, 0.25);
+    border-radius: var(--radius-base, 4px);
+    text-align: center;
+}
+
 /* 任务详情输入框 */
 .task-description-input {
     width: 100%;
