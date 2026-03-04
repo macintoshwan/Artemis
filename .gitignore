@@ -12,3 +12,4 @@ node_modules/
 data/
 # 构建产物
 dist/
+/Legacy
