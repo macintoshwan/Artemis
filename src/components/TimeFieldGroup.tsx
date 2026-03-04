@@ -10,8 +10,10 @@
  * - 不一致的字段加警告边框
  */
 
-import { useMemo, memo, type ReactElement } from 'react';
+import { useState, useMemo, useCallback, memo, type ReactElement } from 'react';
 import { formatRelativeTimeCN, formatDurationCN } from '../utils/formatTime';
+import { DateTimePicker } from './DateTimePicker';
+import { DurationPicker } from './DurationPicker';
 
 // ============================================================
 // 类型
@@ -142,13 +144,22 @@ function analyzeConsistency(start: string, duration: string, end: string): Consi
   };
 }
 
-/** 格式化 datetime-local 为简短预览文字 */
+/** 格式化 datetime-local 为简短预览文字（修正按钮用） */
 function fmtPreview(dtLocal: string): string {
   if (!dtLocal) return '';
   const d = new Date(dtLocal);
   if (isNaN(d.getTime())) return '';
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** 格式化 datetime-local 为输入框显示文字 */
+function fmtDisplay(dtLocal: string): string {
+  if (!dtLocal) return '';
+  const d = new Date(dtLocal);
+  if (isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 // ============================================================
@@ -163,6 +174,11 @@ export const TimeFieldGroup = memo(function TimeFieldGroup({
   onChange,
   onFix,
 }: TimeFieldGroupProps): ReactElement {
+  // Picker 开关状态
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showDurationPicker, setShowDurationPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
+
   const analysis = useMemo(
     () => analyzeConsistency(start, duration, end),
     [start, duration, end],
@@ -170,6 +186,30 @@ export const TimeFieldGroup = memo(function TimeFieldGroup({
 
   const { consistent, deviationText, fixPreviews, suggestion } = analysis;
   const showWarning = !consistent;
+
+  // DateTimePicker 确认回调
+  const handleStartConfirm = useCallback((v: string) => {
+    onChange('start', v);
+    setShowStartPicker(false);
+  }, [onChange]);
+
+  const handleEndConfirm = useCallback((v: string) => {
+    onChange('end', v);
+    setShowEndPicker(false);
+  }, [onChange]);
+
+  // DurationPicker 确认回调
+  const handleDurationConfirm = useCallback((v: string) => {
+    onChange('duration', v);
+    setShowDurationPicker(false);
+  }, [onChange]);
+
+  // 格式化 datetime-local 为用户可读文本
+  const startDisplay = start ? fmtDisplay(start) : '';
+  const endDisplay = end ? fmtDisplay(end) : '';
+  const durationDisplay = duration && parseFloat(duration) > 0
+    ? formatDurationCN(parseFloat(duration))
+    : '';
 
   return (
     <>
@@ -187,12 +227,16 @@ export const TimeFieldGroup = memo(function TimeFieldGroup({
             </button>
           )}
         </label>
-        <input
-          type="datetime-local"
-          className={showWarning ? 'time-warning' : ''}
-          value={start}
-          onChange={(e) => onChange('start', e.target.value)}
-        />
+        <div className="input-with-fix">
+          <input
+            type="text"
+            readOnly
+            className={showWarning ? 'time-warning' : ''}
+            value={startDisplay}
+            placeholder="点击选择时间"
+            onClick={() => setShowStartPicker(true)}
+          />
+        </div>
         <div className="time-hint-row">
           {start && (
             <span className="relative-time">{formatRelativeTimeCN(start)}</span>
@@ -212,7 +256,7 @@ export const TimeFieldGroup = memo(function TimeFieldGroup({
       {/* 耗时 */}
       <div className="form-item">
         <label>
-          {label}耗时(h)
+          {label}耗时
           {showWarning && (
             <button
               className="btn-fix"
@@ -223,19 +267,17 @@ export const TimeFieldGroup = memo(function TimeFieldGroup({
             </button>
           )}
         </label>
-        <input
-          type="number"
-          className={showWarning ? 'time-warning' : ''}
-          value={duration}
-          onChange={(e) => onChange('duration', e.target.value)}
-          placeholder="小时"
-          min="0"
-          step="0.5"
-        />
+        <div className="input-with-fix">
+          <input
+            type="text"
+            readOnly
+            className={showWarning ? 'time-warning' : ''}
+            value={durationDisplay}
+            placeholder="点击选择耗时"
+            onClick={() => setShowDurationPicker(true)}
+          />
+        </div>
         <div className="time-hint-row">
-          {duration && parseFloat(duration) > 0 && (
-            <span className="relative-time">{formatDurationCN(parseFloat(duration))}</span>
-          )}
           {suggestion?.field === 'duration' && (
             <button
               className="btn-suggest"
@@ -262,12 +304,16 @@ export const TimeFieldGroup = memo(function TimeFieldGroup({
             </button>
           )}
         </label>
-        <input
-          type="datetime-local"
-          className={showWarning ? 'time-warning' : ''}
-          value={end}
-          onChange={(e) => onChange('end', e.target.value)}
-        />
+        <div className="input-with-fix">
+          <input
+            type="text"
+            readOnly
+            className={showWarning ? 'time-warning' : ''}
+            value={endDisplay}
+            placeholder="点击选择时间"
+            onClick={() => setShowEndPicker(true)}
+          />
+        </div>
         <div className="time-hint-row">
           {end && (
             <span className="relative-time">{formatRelativeTimeCN(end)}</span>
@@ -289,6 +335,29 @@ export const TimeFieldGroup = memo(function TimeFieldGroup({
         <div className="form-item-full time-inconsistency-warning">
           ⚠ 开始 + 耗时 ≠ 结束（{deviationText}），请点击上方「修正」按钮校准
         </div>
+      )}
+
+      {/* ---- Picker 模态框 ---- */}
+      {showStartPicker && (
+        <DateTimePicker
+          value={start}
+          onConfirm={handleStartConfirm}
+          onClose={() => setShowStartPicker(false)}
+        />
+      )}
+      {showDurationPicker && (
+        <DurationPicker
+          value={duration}
+          onConfirm={handleDurationConfirm}
+          onClose={() => setShowDurationPicker(false)}
+        />
+      )}
+      {showEndPicker && (
+        <DateTimePicker
+          value={end}
+          onConfirm={handleEndConfirm}
+          onClose={() => setShowEndPicker(false)}
+        />
       )}
     </>
   );

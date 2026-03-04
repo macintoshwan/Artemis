@@ -829,6 +829,16 @@ input[readonly] {
     background: var(--bg-page);
 }
 
+/* 耗时选择器头部预览文字 */
+.duration-preview-label {
+    display: block;
+    text-align: center;
+    font-size: var(--font-size-base);
+    color: var(--color-cyan);
+    margin-top: var(--spacing-xs);
+    font-weight: 600;
+}
+
 /* ============================================================
    赏金选择器样式
    ============================================================ */
