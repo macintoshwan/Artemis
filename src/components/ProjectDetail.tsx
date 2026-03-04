@@ -129,21 +129,21 @@ export const ProjectDetail = memo(function ProjectDetail({ projectId, onBack }: 
           <div>
             <span className="detail-label">预计：</span>
             {fmtDate(summary.planStart)} <span className="detail-label">至</span>{' '}
-            {fmtDate(summary.planEnd)}　
+            {fmtDate(summary.planEnd)}{' '}
             <span className="detail-label">耗时：</span>
             {fmtDuration(summary.planDuration)}
           </div>
           <div>
             <span className="detail-label">实际：</span>
             {fmtDate(summary.actualStart)} <span className="detail-label">至</span>{' '}
-            {fmtDate(summary.actualEnd)}　
+            {fmtDate(summary.actualEnd)}{' '}
             <span className="detail-label">耗时：</span>
             {fmtDuration(summary.actualDuration)}
           </div>
           <div>
             <span className="detail-label">重要度：</span>
-            {project.priority ?? '—'}　<span className="detail-label">类别：</span>
-            {project.category ?? '—'}　<span className="detail-label">赏金：</span>
+            {project.priority ?? '—'}{' '}<span className="detail-label">类别：</span>
+            {project.category ?? '—'}{' '}<span className="detail-label">赏金：</span>
             {project.bounty ?? 0}
           </div>
         </div>

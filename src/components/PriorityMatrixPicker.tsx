@@ -121,7 +121,7 @@ export const PriorityMatrixPicker = memo(function PriorityMatrixPicker({
           </div>
 
           <div className="priority-info-box">
-            重要度：{imp.toFixed(2)}　紧急度：{urg.toFixed(2)}
+            重要度：{imp.toFixed(2)} | 紧急度：{urg.toFixed(2)}
           </div>
         </div>
 

@@ -7,12 +7,14 @@ import { useProjectsStore } from '../store/useProjectsStore';
 import * as api from '../lib/api';
 import type { Project, Task } from '../types';
 
+// Zustand store 引用是模块级常量，不会变化
+const store = useProjectsStore;
+
 // ============================================================
 // useProjectActions
 // ============================================================
 
 export function useProjectActions() {
-  const store = useProjectsStore;
 
   const createProject = useCallback(async (project: Omit<Project, 'created_at'>) => {
     // 乐观插入（使用临时 created_at）
@@ -57,7 +59,6 @@ export function useProjectActions() {
 // ============================================================
 
 export function useTaskActions() {
-  const store = useProjectsStore;
 
   const createTask = useCallback(async (task: Omit<Task, 'created_at'>) => {
     const optimistic: Task = { ...task, created_at: new Date().toISOString() };
@@ -140,7 +141,7 @@ export function useTaskActions() {
 
       await updateTask(taskId, patch);
     },
-    [],
+    [updateTask],
   );
 
   return { createTask, updateTask, removeTask, setTaskStatus };

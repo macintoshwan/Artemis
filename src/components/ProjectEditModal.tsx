@@ -77,13 +77,13 @@ function projectToForm(project: Project): ProjectFormData {
     name: project.name ?? '',
     plan_start_date: isoToLocal(project.plan_start_date),
     plan_end_date: isoToLocal(project.plan_end_date),
-    plan_duration: project.plan_duration != null ? String(project.plan_duration) : '',
+    plan_duration: project.plan_duration !== null && project.plan_duration !== undefined ? String(project.plan_duration) : '',
     actual_start_date: isoToLocal(project.actual_start_date),
     actual_end_date: isoToLocal(project.actual_end_date),
-    actual_duration: project.actual_duration != null ? String(project.actual_duration) : '',
+    actual_duration: project.actual_duration !== null && project.actual_duration !== undefined ? String(project.actual_duration) : '',
     priority: project.priority ?? '中',
     category: project.category ?? '工作',
-    bounty: project.bounty != null ? String(project.bounty) : '',
+    bounty: project.bounty !== null && project.bounty !== undefined ? String(project.bounty) : '',
   };
 }
 

@@ -229,7 +229,7 @@ export const useProjectsStore = create<ProjectsStore>()(
       if (!project) return undefined;
 
       const taskIds = state.tasksByProject[id] ?? [];
-      const removedTasks = taskIds.map((tid) => state.tasks[tid]).filter((t): t is Task => t != null);
+      const removedTasks = taskIds.map((tid) => state.tasks[tid]).filter((t): t is Task => t !== null && t !== undefined);
 
       const { [id]: _, ...restProjects } = state.projects;
       const { [id]: __, ...restTbp } = state.tasksByProject;
@@ -351,7 +351,7 @@ export const selectProjectIds = (state: ProjectsStore) => state.projectIds;
 /** 获取 project 下的所有 tasks 实体列表 */
 export const selectTasksByProject = (projectId: number) => (state: ProjectsStore) => {
   const ids = state.tasksByProject[projectId] ?? [];
-  return ids.map((id) => state.tasks[id]).filter((t): t is Task => t != null);
+  return ids.map((id) => state.tasks[id]).filter((t): t is Task => t !== null && t !== undefined);
 };
 
 /** 加载/初始化状态 */
