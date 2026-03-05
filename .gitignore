@@ -13,3 +13,7 @@ data/
 /dist
 Legacy/app.js
 /Legacy
+
+# TypeScript 增量编译缓存
+*.tsbuildinfo
+tsconfig.tsbuildinfo
