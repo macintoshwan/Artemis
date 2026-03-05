@@ -7,12 +7,14 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useRealtimeSync } from '../hooks/useRealtimeSync';
+import { useTheme } from '../hooks/useTheme';
 import { ProjectList } from './ProjectList';
 import { ProjectDetail } from './ProjectDetail';
 import { ProjectEditModal } from './ProjectEditModal';
 
 export default function App() {
   const { user, loading: authLoading, signIn, signUp, signOut } = useAuth();
+  const { themeLabel, toggleTheme } = useTheme();
 
   // 挂载 Realtime 同步（用户变更时自动 cleanup + 重建）
   useRealtimeSync(user?.id);
@@ -41,18 +43,33 @@ export default function App() {
 
   // ──── 认证中 ────
   if (authLoading) {
-    return <div className="empty-message">正在检查登录状态...</div>;
+    return (
+      <>
+        <header className="app-topbar">
+          <h1>Artemis</h1>
+          <button className="btn-secondary theme-toggle" onClick={toggleTheme}>
+            主题：{themeLabel}
+          </button>
+        </header>
+        <div className="empty-message">正在检查登录状态...</div>
+      </>
+    );
   }
 
   // ──── 未登录 ────
   if (!user) {
-    return <AuthScreen onSignIn={signIn} onSignUp={signUp} />;
+    return <AuthScreen onSignIn={signIn} onSignUp={signUp} themeLabel={themeLabel} onToggleTheme={toggleTheme} />;
   }
 
   // ──── 已登录 ────
   return (
     <>
-      <h1>Artemis</h1>
+      <header className="app-topbar">
+        <h1>Artemis</h1>
+        <button className="btn-secondary theme-toggle" onClick={toggleTheme}>
+          主题：{themeLabel}
+        </button>
+      </header>
 
       {activeProjectId ? (
         <ProjectDetail projectId={activeProjectId} onBack={handleBack} />
@@ -90,9 +107,11 @@ export default function App() {
 interface AuthScreenProps {
   onSignIn: (email: string, password: string) => Promise<void>;
   onSignUp: (email: string, password: string) => Promise<void>;
+  themeLabel: string;
+  onToggleTheme: () => void;
 }
 
-function AuthScreen({ onSignIn, onSignUp }: AuthScreenProps) {
+function AuthScreen({ onSignIn, onSignUp, themeLabel, onToggleTheme }: AuthScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -114,42 +133,50 @@ function AuthScreen({ onSignIn, onSignUp }: AuthScreenProps) {
   };
 
   return (
-    <div className="auth-container" style={{ display: 'flex' }}>
-      <div className="auth-box">
-        <h1 className="auth-title">Artemis</h1>
-        <p className="auth-subtitle">极简项目管理系统</p>
-        <div className="auth-form">
-          <div className="form-item">
-            <label>邮箱</label>
-            <input
-              type="email"
-              className="auth-input"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="请输入邮箱"
-            />
+    <>
+      <header className="app-topbar">
+        <h1>Artemis</h1>
+        <button className="btn-secondary theme-toggle" onClick={onToggleTheme}>
+          主题：{themeLabel}
+        </button>
+      </header>
+      <div className="auth-container" style={{ display: 'flex' }}>
+        <div className="auth-box">
+          <h1 className="auth-title">Artemis</h1>
+          <p className="auth-subtitle">极简项目管理系统</p>
+          <div className="auth-form">
+            <div className="form-item">
+              <label>邮箱</label>
+              <input
+                type="email"
+                className="auth-input"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="请输入邮箱"
+              />
+            </div>
+            <div className="form-item">
+              <label>密码</label>
+              <input
+                type="password"
+                className="auth-input"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="请输入密码（至少6位）"
+              />
+            </div>
+            <div className="auth-buttons">
+              <button className="btn-primary" onClick={() => handle('login')}>
+                登录
+              </button>
+              <button className="btn-secondary" onClick={() => handle('register')}>
+                注册
+              </button>
+            </div>
+            {error && <p className="auth-error">{error}</p>}
           </div>
-          <div className="form-item">
-            <label>密码</label>
-            <input
-              type="password"
-              className="auth-input"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="请输入密码（至少6位）"
-            />
-          </div>
-          <div className="auth-buttons">
-            <button className="btn-primary" onClick={() => handle('login')}>
-              登录
-            </button>
-            <button className="btn-secondary" onClick={() => handle('register')}>
-              注册
-            </button>
-          </div>
-          {error && <p className="auth-error">{error}</p>}
         </div>
       </div>
-    </div>
+    </>
   );
 }
