@@ -1,15 +1,30 @@
 import { useCallback, useEffect, useState } from 'react';
 
-export type ThemePreset = 'hp37000' | 'hp9845' | 'hp54600-new' | 'hp54600-aged';
+export type ThemePreset =
+  | 'hp37000'
+  | 'hp9845'
+  | 'hp54600-new'
+  | 'hp54600-aged'
+  | 'paris'
+  | 'iknowiletudown';
 
 const THEME_KEY = 'artemis-theme';
-const THEME_ORDER: ThemePreset[] = ['hp37000', 'hp9845', 'hp54600-new', 'hp54600-aged'];
+const THEME_ORDER: ThemePreset[] = [
+  'hp37000',
+  'hp9845',
+  'hp54600-new',
+  'hp54600-aged',
+  'paris',
+  'iknowiletudown',
+];
 
 const THEME_CLASS_MAP: Record<ThemePreset, string> = {
   hp37000: 'theme-hp37000',
   hp9845: 'theme-hp9845',
   'hp54600-new': 'theme-hp54600-new',
   'hp54600-aged': 'theme-hp54600-aged',
+  paris: 'theme-paris',
+  iknowiletudown: 'theme-iknowiletudown',
 };
 
 const THEME_LABEL_MAP: Record<ThemePreset, string> = {
@@ -17,6 +32,8 @@ const THEME_LABEL_MAP: Record<ThemePreset, string> = {
   hp9845: 'HP9845 终端',
   'hp54600-new': 'HP54600 示波器（新机）',
   'hp54600-aged': 'HP54600 示波器（老化）',
+  paris: 'Paris',
+  iknowiletudown: 'I Know I Let You Down',
 };
 
 function getNextTheme(current: ThemePreset): ThemePreset {
@@ -34,7 +51,9 @@ function isThemePreset(value: string | null): value is ThemePreset {
   return value === 'hp37000'
     || value === 'hp9845'
     || value === 'hp54600-new'
-    || value === 'hp54600-aged';
+    || value === 'hp54600-aged'
+    || value === 'paris'
+    || value === 'iknowiletudown';
 }
 
 function getStoredTheme(): ThemePreset | null {

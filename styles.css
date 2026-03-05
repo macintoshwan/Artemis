@@ -247,6 +247,80 @@ body.theme-hp54600-aged {
     --shadow-modal: 0 0 16px rgba(120, 185, 122, 0.18);
 }
 
+body.theme-paris {
+    --text-color: #ffffff;
+    --color-primary: #ffffff;
+    --color-cyan: #ffd7d7;
+    --color-red: #b50018;
+    --color-success: #ffffff;
+    --color-warning: #ffd7d7;
+    --color-danger: #ff7f93;
+    --color-secondary: #8e1d2e;
+    --color-time-remaining: #ffffff;
+    --color-selected: #ffffff;
+    --color-selected-text: #b50018;
+    --color-hover-danger: #ff4f6f;
+    --color-on-primary: #b50018;
+
+    --bg-page: #b50018;
+    --bg-card: #c51024;
+    --bg-card-alt: #970013;
+    --bg-task: #a70018;
+    --bg-overlay: rgba(130, 0, 18, 0.88);
+
+    --text-primary: var(--text-color);
+    --text-secondary: #ffe3e7;
+    --text-on-module: var(--text-color);
+    --text-muted: #ffd2d9;
+    --text-disabled: #f0b0bb;
+    --text-white: #ffffff;
+
+    --border-color: #ffffff;
+    --border-outer: #ffffff;
+    --border-module: #ffffff;
+    --border-light: #ffd7d7;
+
+    --shadow-card: none;
+    --shadow-modal: 0 0 20px rgba(255, 255, 255, 0.2);
+}
+
+body.theme-iknowiletudown {
+    --text-color: #111111;
+    --color-primary: #f3c600;
+    --color-cyan: #f6d84a;
+    --color-red: #ab1f1f;
+    --color-success: #f6d84a;
+    --color-warning: #e6b900;
+    --color-danger: #ab1f1f;
+    --color-secondary: #6f622d;
+    --color-time-remaining: #5e4900;
+    --color-selected: #1e1e1e;
+    --color-selected-text: #ffe27a;
+    --color-hover-danger: #861111;
+    --color-on-primary: #111111;
+
+    --bg-page: #f0c514;
+    --bg-card: #f6d243;
+    --bg-card-alt: #caa100;
+    --bg-task: #f7d957;
+    --bg-overlay: rgba(240, 197, 20, 0.78);
+
+    --text-primary: var(--text-color);
+    --text-secondary: #232323;
+    --text-on-module: var(--text-color);
+    --text-muted: #3a3a3a;
+    --text-disabled: #575757;
+    --text-white: #ffffff;
+
+    --border-color: #111111;
+    --border-outer: #111111;
+    --border-module: #111111;
+    --border-light: #111111;
+
+    --shadow-card: none;
+    --shadow-modal: 0 0 20px rgba(50, 40, 0, 0.2);
+}
+
 body.theme-hp9845 h1,
 body.theme-hp9845 .modal-title,
 body.theme-hp9845 .auth-title {
@@ -319,7 +393,7 @@ h1 {
 
 .theme-toggle {
     flex-shrink: 0;
-    min-width: 220px;
+    min-width: 280px;
 }
 
 /* 项目详情页文字样式 */
