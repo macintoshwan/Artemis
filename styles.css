@@ -286,24 +286,24 @@ body.theme-paris {
 
 body.theme-iknowiletudown {
     --text-color: #111111;
-    --color-primary: #f3c600;
-    --color-cyan: #f6d84a;
+    --color-primary: #f08a00;
+    --color-cyan: #ff9f33;
     --color-red: #ab1f1f;
-    --color-success: #f6d84a;
-    --color-warning: #e6b900;
+    --color-success: #ff9f33;
+    --color-warning: #e07c00;
     --color-danger: #ab1f1f;
-    --color-secondary: #6f622d;
-    --color-time-remaining: #5e4900;
+    --color-secondary: #6f482d;
+    --color-time-remaining: #5e2f00;
     --color-selected: #1e1e1e;
-    --color-selected-text: #ffe27a;
+    --color-selected-text: #ffcd8a;
     --color-hover-danger: #861111;
     --color-on-primary: #111111;
 
-    --bg-page: #f0c514;
-    --bg-card: #f6d243;
-    --bg-card-alt: #caa100;
-    --bg-task: #f7d957;
-    --bg-overlay: rgba(240, 197, 20, 0.78);
+    --bg-page: #e07a00;
+    --bg-card: #ee8e1c;
+    --bg-card-alt: #bb5f00;
+    --bg-task: #f29c32;
+    --bg-overlay: rgba(224, 122, 0, 0.78);
 
     --text-primary: var(--text-color);
     --text-secondary: #232323;
@@ -318,7 +318,7 @@ body.theme-iknowiletudown {
     --border-light: #111111;
 
     --shadow-card: none;
-    --shadow-modal: 0 0 20px rgba(50, 40, 0, 0.2);
+    --shadow-modal: 0 0 20px rgba(70, 36, 0, 0.22);
 }
 
 body.theme-hp9845 h1,
