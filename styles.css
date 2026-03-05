@@ -507,6 +507,80 @@ button:hover {
     margin-top: var(--spacing-md);
 }
 
+/* 相对时间提示 */
+.relative-time {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+/* 修正按钮（时间一致性） */
+.btn-fix {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    font-size: 10px;
+    color: var(--color-warning, #e0a800);
+    background: transparent;
+    border: 1px solid var(--color-warning, #e0a800);
+    border-radius: 3px;
+    cursor: pointer;
+    vertical-align: middle;
+}
+.btn-fix:hover {
+    background: rgba(224, 168, 0, 0.15);
+}
+
+/* 修正按钮预览文字 */
+.btn-fix {
+    max-width: none;
+    white-space: nowrap;
+}
+
+/* 时间提示行（相对时间 + 建议按钮） */
+.time-hint-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 18px;
+    margin-top: 2px;
+}
+
+/* 自动补全建议按钮 */
+.btn-suggest {
+    display: inline-block;
+    padding: 1px 6px;
+    font-size: 10px;
+    color: var(--color-success, #28a745);
+    background: transparent;
+    border: 1px solid var(--color-success, #28a745);
+    border-radius: 3px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.btn-suggest:hover {
+    background: rgba(40, 167, 69, 0.15);
+}
+
+/* 时间不一致警告边框 */
+.form-item input.time-warning,
+.form-item input.time-warning:focus {
+    border-color: var(--color-warning, #e0a800);
+    box-shadow: 0 0 0 1px rgba(224, 168, 0, 0.3);
+}
+
+/* 时间不一致警告条 —— 横跨三列 */
+.time-inconsistency-warning {
+    grid-column: 1 / -1;
+    padding: 6px 12px;
+    font-size: 12px;
+    color: var(--color-warning, #e0a800);
+    background: rgba(224, 168, 0, 0.08);
+    border: 1px solid rgba(224, 168, 0, 0.25);
+    border-radius: var(--radius-base, 4px);
+    text-align: center;
+}
+
 /* 任务详情输入框 */
 .task-description-input {
     width: 100%;
@@ -610,6 +684,7 @@ button:hover {
 /* 表单输入框通用样式 - 黑底+黄色描边 */
 .form-item input[type="text"],
 .form-item input[type="date"],
+.form-item input[type="datetime-local"],
 .form-item input[type="number"],
 .form-item select {
     padding: 12px var(--spacing-md);
@@ -621,6 +696,7 @@ button:hover {
     width: 100%;
     background: var(--bg-page);
     color: var(--text-primary);
+    font-family: var(--font-family);
 }
 
 /* 输入框验证不通过时的红色高亮 */
@@ -630,8 +706,10 @@ button:hover {
 }
 
 .form-item input:focus,
-.form-item select:focus {
+.form-item select:focus,
+.form-item textarea:focus {
     border-color: var(--color-cyan);
+    box-shadow: 0 0 0 2px rgba(102, 255, 204, 0.15);
 }
 
 /* 下拉选择框样式 */
@@ -644,6 +722,39 @@ button:hover {
 .form-item select option {
     background: var(--bg-page);
     color: var(--text-primary);
+}
+
+/* 表单内 textarea 统一样式 */
+.form-item textarea {
+    width: 100%;
+    min-height: 120px;
+    max-height: 300px;
+    padding: 12px var(--spacing-md);
+    border: var(--border-width-module) solid var(--border-module);
+    border-radius: var(--radius-base);
+    font-size: var(--font-size-base);
+    font-family: var(--font-family);
+    background: var(--bg-page);
+    color: var(--text-color);
+    resize: vertical;
+    line-height: 1.6;
+    outline: none;
+    transition: border-color var(--transition-fast);
+}
+
+.form-item textarea::placeholder {
+    color: rgba(254, 165, 0, 0.4);
+}
+
+/* datetime-local 输入框的日历图标颜色 */
+.form-item input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.7) sepia(1) saturate(5) hue-rotate(10deg);
+    cursor: pointer;
+}
+
+/* 输入框占位符统一颜色 */
+.form-item input::placeholder {
+    color: rgba(254, 165, 0, 0.4);
 }
 
 /* 浮层底部 - 确认按钮区域 */
@@ -716,6 +827,16 @@ button:hover {
 input[readonly] {
     cursor: pointer;
     background: var(--bg-page);
+}
+
+/* 耗时选择器头部预览文字 */
+.duration-preview-label {
+    display: block;
+    text-align: center;
+    font-size: var(--font-size-base);
+    color: var(--color-cyan);
+    margin-top: var(--spacing-xs);
+    font-weight: 600;
 }
 
 /* ============================================================
