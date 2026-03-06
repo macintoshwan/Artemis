@@ -1763,3 +1763,186 @@ input[readonly] {
     background: var(--color-danger);
     color: var(--color-on-primary);
 }
+
+/* ============================================================
+   移动端响应式优化（Issue #4）
+   ============================================================ */
+
+@media (max-width: 900px) {
+    body {
+        max-width: 100%;
+        padding: 10px;
+    }
+
+    h1 {
+        font-size: clamp(26px, 6vw, 36px);
+    }
+
+    .theme-toggle {
+        min-width: 0;
+    }
+
+    .task-graph {
+        height: 260px;
+    }
+}
+
+@media (max-width: 768px) {
+    .app-topbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .app-topbar h1 {
+        text-align: center;
+    }
+
+    .theme-toggle {
+        width: 100%;
+    }
+
+    .project-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .project-actions {
+        width: 100%;
+    }
+
+    .project-actions .btn-danger,
+    .project-actions .btn-edit {
+        width: 100%;
+    }
+
+    .task-item {
+        flex-wrap: wrap;
+        align-items: center;
+        row-gap: 8px;
+    }
+
+    .task-status-buttons {
+        flex-wrap: wrap;
+        width: 100%;
+    }
+
+    .task-name {
+        width: 100%;
+        order: 2;
+    }
+
+    .task-item .btn-danger {
+        margin-left: auto;
+        min-height: 40px;
+    }
+
+    .task-graph {
+        height: 230px;
+    }
+
+    .task-graph-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .task-graph-mode-buttons {
+        flex-wrap: wrap;
+    }
+
+    .task-graph-mode-btn {
+        flex: 1;
+        min-width: 92px;
+    }
+
+    .picker-table-wrapper {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .picker-table-column {
+        min-width: 100%;
+    }
+
+    .picker-table-content {
+        max-height: 180px;
+    }
+
+    .bounty-options {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .bounty-custom-row,
+    .duration-custom-row {
+        grid-template-columns: 1fr;
+    }
+
+    .user-bar {
+        justify-content: space-between;
+        flex-wrap: wrap;
+        row-gap: 8px;
+    }
+
+    .modal-footer {
+        justify-content: stretch;
+    }
+
+    .modal-footer .btn-primary {
+        width: 100%;
+    }
+}
+
+@media (max-width: 600px) {
+    body {
+        padding: 8px;
+    }
+
+    button,
+    .btn-primary,
+    .btn-secondary,
+    .btn-danger,
+    .btn-success,
+    .btn-edit,
+    .btn-logout,
+    .task-status-btn {
+        min-height: 44px;
+    }
+
+    .task-status-btn {
+        font-size: 12px;
+        padding: 8px 10px;
+    }
+
+    .project-title {
+        font-size: var(--font-size-large);
+    }
+
+    .time-remaining {
+        font-size: var(--font-size-small);
+    }
+
+    .auth-container {
+        min-height: auto;
+        padding: 8px;
+    }
+
+    .auth-box {
+        max-width: 100%;
+    }
+
+    .task-graph {
+        height: 210px;
+    }
+}
+
+@media (hover: none) and (pointer: coarse) {
+    button:hover,
+    .task-graph-mode-btn:hover,
+    .picker-item:hover,
+    .bounty-option:hover,
+    .prerequisite-item:hover {
+        opacity: 1;
+        transform: none;
+    }
+}
