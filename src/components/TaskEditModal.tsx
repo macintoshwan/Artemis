@@ -16,6 +16,7 @@ import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { useProjectsStore, selectTask, selectProject } from '../store/useProjectsStore';
 import { useTaskActions } from '../hooks/useActions';
 import { useAuth } from '../hooks/useAuth';
+import { suggestTaskDescriptionByTitle } from '../lib/api';
 import { TimeFieldGroup } from './TimeFieldGroup';
 import { PriorityMatrixPicker } from './PriorityMatrixPicker';
 import { PrerequisitePicker } from './PrerequisitePicker';
@@ -156,6 +157,8 @@ export const TaskEditModal = memo(function TaskEditModal({
   const [showPriority, setShowPriority] = useState(false);
   const [showPrereqs, setShowPrereqs] = useState(false);
   const [showBounty, setShowBounty] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
 
   // 初始化表单（仅首次 / taskId 变化时）
   useEffect(() => {
@@ -327,6 +330,30 @@ export const TaskEditModal = memo(function TaskEditModal({
     }
   }, [form, projectId, user, createTask, onClose, buildPayload]);
 
+  const handleAiFillDescription = useCallback(async () => {
+    const title = form.name.trim();
+    if (!title) {
+      setAiError('请先输入任务名称，再使用 AI 补全');
+      return;
+    }
+
+    setAiError('');
+    setAiLoading(true);
+    try {
+      const result = await suggestTaskDescriptionByTitle(title);
+      setForm((prev) => {
+        const next = { ...prev, description: result.description };
+        autoSave(next);
+        return next;
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'AI 补全失败';
+      setAiError(message);
+    } finally {
+      setAiLoading(false);
+    }
+  }, [form.name, autoSave]);
+
   return (
     <div className="modal-overlay" style={{ display: 'flex' }} onClick={onClose}>
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
@@ -429,12 +456,24 @@ export const TaskEditModal = memo(function TaskEditModal({
 
             {/* 详情 - 跨三列 */}
             <div className="form-item form-item-full">
-              <label>详情</label>
+              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                <span>详情</span>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  style={{ padding: '4px 8px', fontSize: '12px' }}
+                  onClick={handleAiFillDescription}
+                  disabled={aiLoading}
+                >
+                  {aiLoading ? 'AI 生成中...' : 'AI补全'}
+                </button>
+              </label>
               <textarea
                 value={form.description}
                 onChange={(e) => handleChange('description', e.target.value)}
                 placeholder="在这里输入任务详情、备注、链接等..."
               />
+              {aiError && <p className="auth-error" style={{ textAlign: 'left' }}>{aiError}</p>}
             </div>
           </div>
         </div>
