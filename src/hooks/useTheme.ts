@@ -6,7 +6,12 @@ export type ThemePreset =
   | 'hp54600-new'
   | 'hp54600-aged'
   | 'paris'
-  | 'iknowiletudown';
+  | 'iknowiletudown'
+  | 'dynamicron-e180'
+  | 'vhs-future-1976'
+  | 'vhs-pixel-sunset'
+  | 'basf-sm90'
+  | 'vhs-t120-light';
 
 const THEME_KEY = 'artemis-theme';
 const THEME_ORDER: ThemePreset[] = [
@@ -16,6 +21,11 @@ const THEME_ORDER: ThemePreset[] = [
   'hp54600-aged',
   'paris',
   'iknowiletudown',
+  'dynamicron-e180',
+  'vhs-future-1976',
+  'vhs-pixel-sunset',
+  'basf-sm90',
+  'vhs-t120-light',
 ];
 
 const THEME_CLASS_MAP: Record<ThemePreset, string> = {
@@ -25,6 +35,11 @@ const THEME_CLASS_MAP: Record<ThemePreset, string> = {
   'hp54600-aged': 'theme-hp54600-aged',
   paris: 'theme-paris',
   iknowiletudown: 'theme-iknowiletudown',
+  'dynamicron-e180': 'theme-dynamicron-e180',
+  'vhs-future-1976': 'theme-vhs-future-1976',
+  'vhs-pixel-sunset': 'theme-vhs-pixel-sunset',
+  'basf-sm90': 'theme-basf-sm90',
+  'vhs-t120-light': 'theme-vhs-t120-light',
 };
 
 const THEME_LABEL_MAP: Record<ThemePreset, string> = {
@@ -34,7 +49,17 @@ const THEME_LABEL_MAP: Record<ThemePreset, string> = {
   'hp54600-aged': 'HP54600 示波器（老化）',
   paris: 'Paris',
   iknowiletudown: 'I Know I Let You Down',
+  'dynamicron-e180': 'Dynamicron E-180 VHS',
+  'vhs-future-1976': 'VHS The Future Is Here',
+  'vhs-pixel-sunset': 'VHS Pixel Sunset',
+  'basf-sm90': 'BASF SM90',
+  'vhs-t120-light': 'VHS T-120 Light',
 };
+
+const THEME_OPTIONS: Array<{ value: ThemePreset; label: string }> = THEME_ORDER.map((value) => ({
+  value,
+  label: THEME_LABEL_MAP[value],
+}));
 
 function getNextTheme(current: ThemePreset): ThemePreset {
   const currentIndex = THEME_ORDER.indexOf(current);
@@ -53,7 +78,12 @@ function isThemePreset(value: string | null): value is ThemePreset {
     || value === 'hp54600-new'
     || value === 'hp54600-aged'
     || value === 'paris'
-    || value === 'iknowiletudown';
+    || value === 'iknowiletudown'
+    || value === 'dynamicron-e180'
+    || value === 'vhs-future-1976'
+    || value === 'vhs-pixel-sunset'
+    || value === 'basf-sm90'
+    || value === 'vhs-t120-light';
 }
 
 function getStoredTheme(): ThemePreset | null {
@@ -84,6 +114,12 @@ export function useTheme() {
     return () => media.removeEventListener('change', handleChange);
   }, [hasManualPreference]);
 
+  const setThemePreset = useCallback((next: ThemePreset) => {
+    setTheme(next);
+    window.localStorage.setItem(THEME_KEY, next);
+    setHasManualPreference(true);
+  }, []);
+
   const toggleTheme = useCallback(() => {
     setTheme((prev) => {
       const next = getNextTheme(prev);
@@ -93,5 +129,5 @@ export function useTheme() {
     setHasManualPreference(true);
   }, []);
 
-  return { theme, themeLabel, toggleTheme };
+  return { theme, themeLabel, themeOptions: THEME_OPTIONS, setThemePreset, toggleTheme };
 }
