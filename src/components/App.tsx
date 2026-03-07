@@ -7,14 +7,14 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useRealtimeSync } from '../hooks/useRealtimeSync';
-import { useTheme } from '../hooks/useTheme';
+import { useTheme, type ThemePreset } from '../hooks/useTheme';
 import { ProjectList } from './ProjectList';
 import { ProjectDetail } from './ProjectDetail';
 import { ProjectEditModal } from './ProjectEditModal';
 
 export default function App() {
   const { user, loading: authLoading, signIn, signUp, signOut } = useAuth();
-  const { themeLabel, toggleTheme } = useTheme();
+  const { theme, themeOptions, setThemePreset } = useTheme();
 
   // 挂载 Realtime 同步（用户变更时自动 cleanup + 重建）
   useRealtimeSync(user?.id);
@@ -47,9 +47,7 @@ export default function App() {
       <>
         <header className="app-topbar">
           <h1>Artemis</h1>
-          <button className="btn-secondary theme-toggle" onClick={toggleTheme}>
-            主题：{themeLabel}
-          </button>
+          <ThemePicker theme={theme} onChangeTheme={setThemePreset} themeOptions={themeOptions} />
         </header>
         <div className="empty-message">正在检查登录状态...</div>
       </>
@@ -58,7 +56,7 @@ export default function App() {
 
   // ──── 未登录 ────
   if (!user) {
-    return <AuthScreen onSignIn={signIn} onSignUp={signUp} themeLabel={themeLabel} onToggleTheme={toggleTheme} />;
+    return <AuthScreen onSignIn={signIn} onSignUp={signUp} theme={theme} onChangeTheme={setThemePreset} themeOptions={themeOptions} />;
   }
 
   // ──── 已登录 ────
@@ -66,9 +64,7 @@ export default function App() {
     <>
       <header className="app-topbar">
         <h1>Artemis</h1>
-        <button className="btn-secondary theme-toggle" onClick={toggleTheme}>
-          主题：{themeLabel}
-        </button>
+        <ThemePicker theme={theme} onChangeTheme={setThemePreset} themeOptions={themeOptions} />
       </header>
 
       {activeProjectId ? (
@@ -107,11 +103,12 @@ export default function App() {
 interface AuthScreenProps {
   onSignIn: (email: string, password: string) => Promise<void>;
   onSignUp: (email: string, password: string) => Promise<void>;
-  themeLabel: string;
-  onToggleTheme: () => void;
+  theme: ThemePreset;
+  onChangeTheme: (theme: ThemePreset) => void;
+  themeOptions: Array<{ value: ThemePreset; label: string }>;
 }
 
-function AuthScreen({ onSignIn, onSignUp, themeLabel, onToggleTheme }: AuthScreenProps) {
+function AuthScreen({ onSignIn, onSignUp, theme, onChangeTheme, themeOptions }: AuthScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -136,9 +133,7 @@ function AuthScreen({ onSignIn, onSignUp, themeLabel, onToggleTheme }: AuthScree
     <>
       <header className="app-topbar">
         <h1>Artemis</h1>
-        <button className="btn-secondary theme-toggle" onClick={onToggleTheme}>
-          主题：{themeLabel}
-        </button>
+        <ThemePicker theme={theme} onChangeTheme={onChangeTheme} themeOptions={themeOptions} />
       </header>
       <div className="auth-container" style={{ display: 'flex' }}>
         <div className="auth-box">
@@ -178,5 +173,28 @@ function AuthScreen({ onSignIn, onSignUp, themeLabel, onToggleTheme }: AuthScree
         </div>
       </div>
     </>
+  );
+}
+
+interface ThemePickerProps {
+  theme: ThemePreset;
+  onChangeTheme: (theme: ThemePreset) => void;
+  themeOptions: Array<{ value: ThemePreset; label: string }>;
+}
+
+function ThemePicker({ theme, onChangeTheme, themeOptions }: ThemePickerProps) {
+  return (
+    <select
+      className="theme-toggle theme-toggle-select"
+      value={theme}
+      onChange={(e) => onChangeTheme(e.target.value as ThemePreset)}
+      aria-label="选择主题"
+    >
+      {themeOptions.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
   );
 }
