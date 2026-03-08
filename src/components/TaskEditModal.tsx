@@ -21,7 +21,7 @@ import { TimeFieldGroup } from './TimeFieldGroup';
 import { PriorityMatrixPicker } from './PriorityMatrixPicker';
 import { PrerequisitePicker } from './PrerequisitePicker';
 import { BountyPicker } from './BountyPicker';
-import type { Task, TaskPriority } from '../types';
+import type { Project, Task, TaskPriority } from '../types';
 
 // ============================================================
 // 类型
@@ -134,6 +134,31 @@ function fmtPriority(imp: number, urg: number): string {
   return `${iLabel} / ${uLabel}`;
 }
 
+function buildProjectContext(project: Project | undefined): string {
+  if (!project) return '';
+
+  const segments: string[] = [];
+  segments.push(`项目名：${project.name}`);
+
+  if (project.category) {
+    segments.push(`类别：${project.category}`);
+  }
+
+  if (project.priority) {
+    segments.push(`项目优先级：${project.priority}`);
+  }
+
+  if (project.plan_duration !== null) {
+    segments.push(`预计总耗时：${project.plan_duration}小时`);
+  }
+
+  if (project.bounty !== null) {
+    segments.push(`项目赏金：${project.bounty}`);
+  }
+
+  return segments.join('；');
+}
+
 // ============================================================
 // 组件
 // ============================================================
@@ -159,6 +184,7 @@ export const TaskEditModal = memo(function TaskEditModal({
   const [showBounty, setShowBounty] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState('');
+  const [aiPreviousDescription, setAiPreviousDescription] = useState<string | null>(null);
 
   // 初始化表单（仅首次 / taskId 变化时）
   useEffect(() => {
@@ -337,11 +363,18 @@ export const TaskEditModal = memo(function TaskEditModal({
       return;
     }
 
+    const projectContext = buildProjectContext(project);
+
     setAiError('');
     setAiLoading(true);
     try {
-      const result = await suggestTaskDescriptionByTitle(title);
+      const result = await suggestTaskDescriptionByTitle({
+        taskTitle: title,
+        projectContext,
+        draftDescription: form.description,
+      });
       setForm((prev) => {
+        setAiPreviousDescription(prev.description);
         const next = { ...prev, description: result.description };
         autoSave(next);
         return next;
@@ -352,7 +385,18 @@ export const TaskEditModal = memo(function TaskEditModal({
     } finally {
       setAiLoading(false);
     }
-  }, [form.name, autoSave]);
+  }, [form.name, form.description, project, autoSave]);
+
+  const handleUndoAiFill = useCallback(() => {
+    if (aiPreviousDescription === null) return;
+    setForm((prev) => {
+      const next = { ...prev, description: aiPreviousDescription };
+      autoSave(next);
+      return next;
+    });
+    setAiPreviousDescription(null);
+    setAiError('');
+  }, [aiPreviousDescription, autoSave]);
 
   return (
     <div className="modal-overlay" style={{ display: 'flex' }} onClick={onClose}>
@@ -456,18 +500,30 @@ export const TaskEditModal = memo(function TaskEditModal({
 
             {/* 详情 - 跨三列 */}
             <div className="form-item form-item-full">
-              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                <span>详情</span>
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  style={{ padding: '4px 8px', fontSize: '12px' }}
-                  onClick={handleAiFillDescription}
-                  disabled={aiLoading}
-                >
-                  {aiLoading ? 'AI 生成中...' : 'AI补全'}
-                </button>
-              </label>
+              <div className="form-item-header">
+                <label>详情</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {aiPreviousDescription !== null && (
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      style={{ padding: '4px 8px', fontSize: '12px' }}
+                      onClick={handleUndoAiFill}
+                    >
+                      撤销AI
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    style={{ padding: '4px 8px', fontSize: '12px' }}
+                    onClick={handleAiFillDescription}
+                    disabled={aiLoading}
+                  >
+                    {aiLoading ? 'AI 生成中...' : 'AI补全'}
+                  </button>
+                </div>
+              </div>
               <textarea
                 value={form.description}
                 onChange={(e) => handleChange('description', e.target.value)}

@@ -37,7 +37,7 @@ const TaskStatusBar = memo(function TaskStatusBar({ currentStatus, onChangeStatu
       {STATUS_OPTIONS.map(({ key, label }) => (
         <button
           key={key}
-          className={`task-status-btn ${key === 'in-progress' ? 'status-progress' : ''} ${
+          className={`task-status-btn status-${key} ${
             currentStatus === key ? 'active' : ''
           }`}
           onClick={(e) => {

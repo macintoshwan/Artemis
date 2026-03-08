@@ -23,7 +23,7 @@ serve(async (req) => {
   }
 
   try {
-    const { taskTitle } = await req.json();
+    const { taskTitle, projectContext, draftDescription } = await req.json();
 
     if (typeof taskTitle !== 'string' || !taskTitle.trim()) {
       return new Response(JSON.stringify({ error: 'taskTitle is required' }), {
@@ -42,8 +42,20 @@ serve(async (req) => {
 
     const model = Deno.env.get('QWEN_MODEL') || 'qwen-turbo';
 
-    const systemPrompt = '你是项目管理助手。仅输出一句中文任务描述，不超过32个字，不要加引号。';
-    const userPrompt = `任务标题：${taskTitle.trim()}\n请给出一句可执行的任务描述。`;
+    const systemPrompt = [
+      '你是项目管理助手，负责把用户的任务草稿梳理、理顺和润色。',
+      '要求：输出1-3句中文，60-160字，不要加引号。',
+      '优先保留用户原文中的关键信息（名词、数字、约束、已有结论），不要凭空编造。',
+      '在不改变原意前提下，补充更清晰的执行动作或产出物。',
+      '避免空泛套话，语言简洁、自然、可执行。',
+    ].join(' ');
+    const contextLine = typeof projectContext === 'string' && projectContext.trim()
+      ? `项目上下文：${projectContext.trim().slice(0, 240)}\n`
+      : '';
+    const draftLine = typeof draftDescription === 'string' && draftDescription.trim()
+      ? `已有草稿：${draftDescription.trim().slice(0, 300)}\n请在其基础上补全优化。\n`
+      : '';
+    const userPrompt = `${contextLine}${draftLine}任务标题：${taskTitle.trim()}\n请基于已有信息做梳理和润色，让描述更清晰可执行。`;
 
     const aiResp = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
       method: 'POST',
@@ -57,8 +69,8 @@ serve(async (req) => {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
-        temperature: 0.2,
-        max_tokens: 64,
+        temperature: 0.1,
+        max_tokens: 140,
       }),
     });
 
@@ -72,7 +84,7 @@ serve(async (req) => {
 
     const data = await aiResp.json() as DashScopeResponse;
     const raw = data.choices?.[0]?.message?.content?.trim() ?? '';
-    const description = raw.replace(/[\r\n]+/g, ' ').slice(0, 120).trim();
+    const description = raw.replace(/[\r\n]+/g, ' ').slice(0, 280).trim();
 
     if (!description) {
       return new Response(JSON.stringify({ error: 'Empty model output' }), {

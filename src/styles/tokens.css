@@ -1,0 +1,12 @@
+:root {
+  --palette-neutral-500: var(--color-secondary);
+  --palette-info-500: var(--color-cyan);
+  --palette-warning-500: var(--color-warning);
+  --palette-success-500: var(--color-success);
+
+  --status-backlog-bg: var(--palette-neutral-500);
+  --status-ready-bg: var(--palette-info-500);
+  --status-inprogress-bg: var(--palette-warning-500);
+  --status-done-bg: var(--palette-success-500);
+  --status-chip-text-on: var(--color-on-primary);
+}
