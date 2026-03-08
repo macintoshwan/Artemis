@@ -16,11 +16,12 @@ import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { useProjectsStore, selectTask, selectProject } from '../store/useProjectsStore';
 import { useTaskActions } from '../hooks/useActions';
 import { useAuth } from '../hooks/useAuth';
+import { suggestTaskDescriptionByTitle } from '../lib/api';
 import { TimeFieldGroup } from './TimeFieldGroup';
 import { PriorityMatrixPicker } from './PriorityMatrixPicker';
 import { PrerequisitePicker } from './PrerequisitePicker';
 import { BountyPicker } from './BountyPicker';
-import type { Task, TaskPriority } from '../types';
+import type { Project, Task, TaskPriority } from '../types';
 
 // ============================================================
 // 类型
@@ -133,6 +134,31 @@ function fmtPriority(imp: number, urg: number): string {
   return `${iLabel} / ${uLabel}`;
 }
 
+function buildProjectContext(project: Project | undefined): string {
+  if (!project) return '';
+
+  const segments: string[] = [];
+  segments.push(`项目名：${project.name}`);
+
+  if (project.category) {
+    segments.push(`类别：${project.category}`);
+  }
+
+  if (project.priority) {
+    segments.push(`项目优先级：${project.priority}`);
+  }
+
+  if (project.plan_duration !== null) {
+    segments.push(`预计总耗时：${project.plan_duration}小时`);
+  }
+
+  if (project.bounty !== null) {
+    segments.push(`项目赏金：${project.bounty}`);
+  }
+
+  return segments.join('；');
+}
+
 // ============================================================
 // 组件
 // ============================================================
@@ -156,6 +182,9 @@ export const TaskEditModal = memo(function TaskEditModal({
   const [showPriority, setShowPriority] = useState(false);
   const [showPrereqs, setShowPrereqs] = useState(false);
   const [showBounty, setShowBounty] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [aiPreviousDescription, setAiPreviousDescription] = useState<string | null>(null);
 
   // 初始化表单（仅首次 / taskId 变化时）
   useEffect(() => {
@@ -327,6 +356,48 @@ export const TaskEditModal = memo(function TaskEditModal({
     }
   }, [form, projectId, user, createTask, onClose, buildPayload]);
 
+  const handleAiFillDescription = useCallback(async () => {
+    const title = form.name.trim();
+    if (!title) {
+      setAiError('请先输入任务名称，再使用 AI 补全');
+      return;
+    }
+
+    const projectContext = buildProjectContext(project);
+
+    setAiError('');
+    setAiLoading(true);
+    try {
+      const result = await suggestTaskDescriptionByTitle({
+        taskTitle: title,
+        projectContext,
+        draftDescription: form.description,
+      });
+      setForm((prev) => {
+        setAiPreviousDescription(prev.description);
+        const next = { ...prev, description: result.description };
+        autoSave(next);
+        return next;
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'AI 补全失败';
+      setAiError(message);
+    } finally {
+      setAiLoading(false);
+    }
+  }, [form.name, form.description, project, autoSave]);
+
+  const handleUndoAiFill = useCallback(() => {
+    if (aiPreviousDescription === null) return;
+    setForm((prev) => {
+      const next = { ...prev, description: aiPreviousDescription };
+      autoSave(next);
+      return next;
+    });
+    setAiPreviousDescription(null);
+    setAiError('');
+  }, [aiPreviousDescription, autoSave]);
+
   return (
     <div className="modal-overlay" style={{ display: 'flex' }} onClick={onClose}>
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
@@ -429,12 +500,36 @@ export const TaskEditModal = memo(function TaskEditModal({
 
             {/* 详情 - 跨三列 */}
             <div className="form-item form-item-full">
-              <label>详情</label>
+              <div className="form-item-header">
+                <label>详情</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {aiPreviousDescription !== null && (
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      style={{ padding: '4px 8px', fontSize: '12px' }}
+                      onClick={handleUndoAiFill}
+                    >
+                      撤销AI
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    style={{ padding: '4px 8px', fontSize: '12px' }}
+                    onClick={handleAiFillDescription}
+                    disabled={aiLoading}
+                  >
+                    {aiLoading ? 'AI 生成中...' : 'AI补全'}
+                  </button>
+                </div>
+              </div>
               <textarea
                 value={form.description}
                 onChange={(e) => handleChange('description', e.target.value)}
                 placeholder="在这里输入任务详情、备注、链接等..."
               />
+              {aiError && <p className="auth-error" style={{ textAlign: 'left' }}>{aiError}</p>}
             </div>
           </div>
         </div>

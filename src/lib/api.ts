@@ -8,6 +8,49 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
 import type { Project, Task, ProjectWithTasks, RealtimePayload } from '../types';
 
+export interface AiTaskDescriptionSuggestion {
+  description: string;
+}
+
+interface SuggestTaskDescriptionInput {
+  taskTitle: string;
+  projectContext?: string;
+  draftDescription?: string;
+}
+
+export async function suggestTaskDescriptionByTitle({
+  taskTitle,
+  projectContext,
+  draftDescription,
+}: SuggestTaskDescriptionInput): Promise<AiTaskDescriptionSuggestion> {
+  const trimmedTitle = taskTitle.trim();
+  if (!trimmedTitle) {
+    throw new Error('任务标题不能为空');
+  }
+
+  const trimmedContext = projectContext?.trim();
+  const trimmedDraft = draftDescription?.trim();
+
+  const { data, error } = await supabase.functions.invoke('ai-task-suggest', {
+    body: {
+      taskTitle: trimmedTitle,
+      projectContext: trimmedContext ? trimmedContext.slice(0, 240) : undefined,
+      draftDescription: trimmedDraft ? trimmedDraft.slice(0, 300) : undefined,
+    },
+  });
+
+  if (error) {
+    throw new Error(`ai-task-suggest: ${error.message}`);
+  }
+
+  const description = typeof data?.description === 'string' ? data.description.trim() : '';
+  if (!description) {
+    throw new Error('AI 未返回有效描述');
+  }
+
+  return { description };
+}
+
 // ============================================================
 // 批量拉取
 // ============================================================

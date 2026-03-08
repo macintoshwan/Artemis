@@ -1,0 +1,142 @@
+body.theme-hp37000 {
+  --palette-neutral-500: #5e5e5e;
+  --palette-info-500: #3f85ff;
+  --palette-warning-500: #ffcc00;
+  --palette-success-500: #2fc276;
+
+  --status-backlog-bg: var(--palette-neutral-500);
+  --status-ready-bg: var(--palette-info-500);
+  --status-inprogress-bg: var(--palette-warning-500);
+  --status-done-bg: var(--palette-success-500);
+  --status-chip-text-on: #000000;
+}
+
+body.theme-hp9845 {
+  --palette-neutral-500: #6d5a46;
+  --palette-info-500: #1f4db8;
+  --palette-warning-500: #ff8a00;
+  --palette-success-500: #0f7a64;
+
+  --status-backlog-bg: var(--palette-neutral-500);
+  --status-ready-bg: var(--palette-info-500);
+  --status-inprogress-bg: var(--palette-warning-500);
+  --status-done-bg: var(--palette-success-500);
+  --status-chip-text-on: #ffffff;
+}
+
+body.theme-hp54600-new {
+  --palette-neutral-500: #2b5f2b;
+  --palette-info-500: #73f073;
+  --palette-warning-500: #c8ff6d;
+  --palette-success-500: #60ff57;
+
+  --status-backlog-bg: var(--palette-neutral-500);
+  --status-ready-bg: var(--palette-info-500);
+  --status-inprogress-bg: var(--palette-warning-500);
+  --status-done-bg: var(--palette-success-500);
+  --status-chip-text-on: #001600;
+}
+
+body.theme-hp54600-aged {
+  --palette-neutral-500: #4d6d50;
+  --palette-info-500: #86d38a;
+  --palette-warning-500: #b9d18f;
+  --palette-success-500: #7fbe7a;
+
+  --status-backlog-bg: var(--palette-neutral-500);
+  --status-ready-bg: var(--palette-info-500);
+  --status-inprogress-bg: var(--palette-warning-500);
+  --status-done-bg: var(--palette-success-500);
+  --status-chip-text-on: #102010;
+}
+
+body.theme-paris {
+  --palette-neutral-500: #8e1d2e;
+  --palette-info-500: #ffd7d7;
+  --palette-warning-500: #ffffff;
+  --palette-success-500: #ff7f93;
+
+  --status-backlog-bg: var(--palette-neutral-500);
+  --status-ready-bg: var(--palette-info-500);
+  --status-inprogress-bg: var(--palette-warning-500);
+  --status-done-bg: var(--palette-success-500);
+  --status-chip-text-on: #b50018;
+}
+
+body.theme-iknowiletudown {
+  --palette-neutral-500: #6f482d;
+  --palette-info-500: #ff9f33;
+  --palette-warning-500: #f08a00;
+  --palette-success-500: #e07c00;
+
+  --status-backlog-bg: var(--palette-neutral-500);
+  --status-ready-bg: var(--palette-info-500);
+  --status-inprogress-bg: var(--palette-warning-500);
+  --status-done-bg: var(--palette-success-500);
+  --status-chip-text-on: #111111;
+}
+
+body.theme-dynamicron-e180 {
+  --palette-neutral-500: #2f3f78;
+  --palette-info-500: #ef513c;
+  --palette-warning-500: #f2b126;
+  --palette-success-500: #f0941f;
+
+  --status-backlog-bg: var(--palette-neutral-500);
+  --status-ready-bg: var(--palette-info-500);
+  --status-inprogress-bg: var(--palette-warning-500);
+  --status-done-bg: var(--palette-success-500);
+  --status-chip-text-on: #121a3b;
+}
+
+body.theme-vhs-future-1976 {
+  --palette-neutral-500: #6c6c6c;
+  --palette-info-500: #2f3152;
+  --palette-warning-500: #ef7d24;
+  --palette-success-500: #f2b12d;
+
+  --status-backlog-bg: var(--palette-neutral-500);
+  --status-ready-bg: var(--palette-info-500);
+  --status-inprogress-bg: var(--palette-warning-500);
+  --status-done-bg: var(--palette-success-500);
+  --status-chip-text-on: #f5f2df;
+}
+
+body.theme-vhs-pixel-sunset {
+  --palette-neutral-500: #5a5f70;
+  --palette-info-500: #2a4f92;
+  --palette-warning-500: #ef8f33;
+  --palette-success-500: #f2d546;
+
+  --status-backlog-bg: var(--palette-neutral-500);
+  --status-ready-bg: var(--palette-info-500);
+  --status-inprogress-bg: var(--palette-warning-500);
+  --status-done-bg: var(--palette-success-500);
+  --status-chip-text-on: #ffffff;
+}
+
+body.theme-basf-sm90 {
+  --palette-neutral-500: #505050;
+  --palette-info-500: #1d1d1d;
+  --palette-warning-500: #ff8a3d;
+  --palette-success-500: #e8602d;
+
+  --status-backlog-bg: var(--palette-neutral-500);
+  --status-ready-bg: var(--palette-info-500);
+  --status-inprogress-bg: var(--palette-warning-500);
+  --status-done-bg: var(--palette-success-500);
+  --status-chip-text-on: #f7f7f7;
+}
+
+body.theme-vhs-t120-light {
+  --palette-neutral-500: #6a2a56;
+  --palette-info-500: #ca244a;
+  --palette-warning-500: #ff5b2a;
+  --palette-success-500: #f2c83d;
+
+  --status-backlog-bg: var(--palette-neutral-500);
+  --status-ready-bg: var(--palette-info-500);
+  --status-inprogress-bg: var(--palette-warning-500);
+  --status-done-bg: var(--palette-success-500);
+  --status-chip-text-on: #ffffff;
+}
