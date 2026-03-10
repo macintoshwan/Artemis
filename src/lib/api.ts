@@ -6,7 +6,7 @@
 
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
-import type { Project, Task, ProjectWithTasks, RealtimePayload } from '../types';
+import type { Project, Task, ProjectWithTasks, RealtimePayload, CheckinTemplate, CheckinRecord } from '../types';
 
 export interface AiTaskDescriptionSuggestion {
   description: string;
@@ -128,6 +128,68 @@ export async function updateTask(id: number, patch: Partial<Task>): Promise<Task
 export async function deleteTask(id: number): Promise<void> {
   const { error } = await supabase.from('tasks').delete().eq('id', id);
   if (error) throw new Error(`deleteTask: ${error.message}`);
+}
+
+// ============================================================
+// Daily Check-in CRUD
+// ============================================================
+
+export async function fetchCheckinTemplates(userId: string): Promise<CheckinTemplate[]> {
+  const { data, error } = await supabase
+    .from('checkin_templates')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw new Error(`fetchCheckinTemplates: ${error.message}`);
+  return (data ?? []) as CheckinTemplate[];
+}
+
+export async function fetchCheckinRecordsByDate(userId: string, dateKey: string): Promise<CheckinRecord[]> {
+  const { data, error } = await supabase
+    .from('checkin_records')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('checkin_date', dateKey);
+
+  if (error) throw new Error(`fetchCheckinRecordsByDate: ${error.message}`);
+  return (data ?? []) as CheckinRecord[];
+}
+
+export async function insertCheckinTemplate(input: { user_id: string; name: string }): Promise<CheckinTemplate> {
+  const { data, error } = await supabase
+    .from('checkin_templates')
+    .insert({
+      user_id: input.user_id,
+      name: input.name,
+    })
+    .select('*')
+    .single();
+
+  if (error) throw new Error(`insertCheckinTemplate: ${error.message}`);
+  return data as CheckinTemplate;
+}
+
+export async function upsertCheckinRecord(input: {
+  user_id: string;
+  template_id: number;
+  checkin_date: string;
+}): Promise<CheckinRecord> {
+  const { data, error } = await supabase
+    .from('checkin_records')
+    .upsert(
+      {
+        user_id: input.user_id,
+        template_id: input.template_id,
+        checkin_date: input.checkin_date,
+      },
+      { onConflict: 'template_id,checkin_date' },
+    )
+    .select('*')
+    .single();
+
+  if (error) throw new Error(`upsertCheckinRecord: ${error.message}`);
+  return data as CheckinRecord;
 }
 
 // ============================================================

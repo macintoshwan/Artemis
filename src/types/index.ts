@@ -100,3 +100,22 @@ export function deriveTaskStatus(task: Task): TaskStatus {
   if (task.plan_start_date) return 'ready';
   return 'backlog';
 }
+
+// ============================================================
+// Daily Check-in Types
+// ============================================================
+
+export interface CheckinTemplate {
+  id: number;
+  name: string;
+  created_at: string;
+  user_id: string;
+}
+
+export interface CheckinRecord {
+  id: number;
+  template_id: number;
+  checkin_date: string; // YYYY-MM-DD
+  created_at: string;
+  user_id: string;
+}

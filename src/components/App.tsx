@@ -4,14 +4,21 @@
  * 职责：认证守卫 + useRealtimeSync 挂载 + 页面路由
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useRealtimeSync } from '../hooks/useRealtimeSync';
 import { useTheme, type ThemePreset } from '../hooks/useTheme';
 import { supabase } from '../lib/supabaseClient';
+import {
+  fetchCheckinTemplates,
+  fetchCheckinRecordsByDate,
+  insertCheckinTemplate,
+  upsertCheckinRecord,
+} from '../lib/api';
 import { ProjectList } from './ProjectList';
 import { ProjectDetail } from './ProjectDetail';
 import { ProjectEditModal } from './ProjectEditModal';
+import type { CheckinTemplate } from '../types';
 
 export default function App() {
   const { user, loading: authLoading, signIn, signUp, signOut } = useAuth();
@@ -34,6 +41,51 @@ export default function App() {
 
   // 新建项目浮层
   const [isNewProjectOpen, setIsNewProjectOpen] = useState(false);
+  const [isCheckinModalOpen, setIsCheckinModalOpen] = useState(false);
+  const [checkins, setCheckins] = useState<CheckinTemplate[]>([]);
+  const [checkinRecords, setCheckinRecords] = useState<Record<number, string>>({});
+  const [checkinLoading, setCheckinLoading] = useState(false);
+
+  const todayKey = getLocalDateKey();
+
+  useEffect(() => {
+    const userId = user?.id;
+    if (!userId) {
+      setCheckins([]);
+      setCheckinRecords({});
+      return;
+    }
+    const currentUserId: string = userId;
+
+    let mounted = true;
+    async function loadCheckinData() {
+      setCheckinLoading(true);
+      try {
+        const [templates, records] = await Promise.all([
+          fetchCheckinTemplates(currentUserId),
+          fetchCheckinRecordsByDate(currentUserId, todayKey),
+        ]);
+
+        if (!mounted) return;
+
+        setCheckins(templates);
+        const recordMap: Record<number, string> = {};
+        for (const row of records) {
+          recordMap[row.template_id] = row.checkin_date;
+        }
+        setCheckinRecords(recordMap);
+      } catch (error) {
+        console.error('加载打卡数据失败:', error);
+      } finally {
+        if (mounted) setCheckinLoading(false);
+      }
+    }
+
+    loadCheckinData();
+    return () => {
+      mounted = false;
+    };
+  }, [user?.id, todayKey]);
 
   const handleOpenNewProject = useCallback(() => {
     setIsNewProjectOpen(true);
@@ -42,6 +94,55 @@ export default function App() {
   const handleCloseNewProject = useCallback(() => {
     setIsNewProjectOpen(false);
   }, []);
+
+  const handleOpenCheckin = useCallback(() => {
+    setIsCheckinModalOpen(true);
+  }, []);
+
+  const handleCloseCheckin = useCallback(() => {
+    setIsCheckinModalOpen(false);
+  }, []);
+
+  const handleCreateCheckin = useCallback(async (name: string) => {
+    if (!user?.id) {
+      alert('请先登录');
+      return;
+    }
+
+    try {
+      const row = await insertCheckinTemplate({
+        user_id: user.id,
+        name,
+      });
+      setCheckins((prev) => [row, ...prev]);
+      setIsCheckinModalOpen(false);
+    } catch (error) {
+      console.error('创建打卡失败:', error);
+      alert('创建打卡失败，请重试');
+    }
+  }, [user?.id]);
+
+  const handleCheckinCardClick = useCallback(async (id: number) => {
+    if (!user?.id) {
+      alert('请先登录');
+      return;
+    }
+    if (checkinRecords[id] === todayKey) {
+      return;
+    }
+
+    try {
+      await upsertCheckinRecord({
+        user_id: user.id,
+        template_id: id,
+        checkin_date: todayKey,
+      });
+      setCheckinRecords((prev) => ({ ...prev, [id]: todayKey }));
+    } catch (error) {
+      console.error('打卡失败:', error);
+      alert('打卡失败，请重试');
+    }
+  }, [checkinRecords, todayKey, user?.id]);
 
   // ──── 认证中 ────
   if (authLoading) {
@@ -87,8 +188,21 @@ export default function App() {
       ) : (
         <>
           <ProjectList onSelectProject={handleSelectProject} />
+
+          {checkins.length > 0 && (
+            <CheckinSection
+              templates={checkins}
+              records={checkinRecords}
+              todayKey={todayKey}
+              onCheckin={handleCheckinCardClick}
+            />
+          )}
+
+          {checkinLoading && <div className="empty-message">正在加载打卡数据...</div>}
+
           <div className="create-project-section">
             <button className="btn-primary btn-create-project" onClick={handleOpenNewProject}>新建项目</button>
+            <button className="btn-primary btn-create-project" onClick={handleOpenCheckin}>创建打卡</button>
           </div>
 
           {/* 新建项目浮层 */}
@@ -96,6 +210,13 @@ export default function App() {
             <ProjectEditModal
               projectId={null}
               onClose={handleCloseNewProject}
+            />
+          )}
+
+          {isCheckinModalOpen && (
+            <CheckinCreateModal
+              onClose={handleCloseCheckin}
+              onConfirm={handleCreateCheckin}
             />
           )}
         </>
@@ -108,6 +229,91 @@ export default function App() {
         </button>
       </div>
     </>
+  );
+}
+
+interface CheckinSectionProps {
+  templates: CheckinTemplate[];
+  records: Record<number, string>;
+  todayKey: string;
+  onCheckin: (id: number) => void;
+}
+
+function CheckinSection({ templates, records, todayKey, onCheckin }: CheckinSectionProps) {
+
+  return (
+    <section className="checkin-section">
+      <h2 className="checkin-title">每日打卡</h2>
+      <div className="checkin-grid">
+        {templates.map((item) => {
+          const doneToday = records[item.id] === todayKey;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              className={`checkin-card ${doneToday ? 'done' : ''}`}
+              onClick={() => onCheckin(item.id)}
+              disabled={doneToday}
+            >
+              <span className="checkin-card-tag">打卡</span>
+              <span className="checkin-card-name">{item.name}</span>
+              <span className="checkin-card-state">{doneToday ? '今日已完成' : '点击打卡'}</span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function getLocalDateKey() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+interface CheckinCreateModalProps {
+  onClose: () => void;
+  onConfirm: (name: string) => void;
+}
+
+function CheckinCreateModal({ onClose, onConfirm }: CheckinCreateModalProps) {
+  const [name, setName] = useState('');
+
+  const handleConfirm = () => {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      alert('请输入打卡名称');
+      return;
+    }
+    onConfirm(trimmed);
+  };
+
+  return (
+    <div className="modal-overlay" style={{ display: 'flex' }} onClick={onClose}>
+      <div className="modal-container checkin-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header checkin-modal-header">
+          <button className="btn-back" onClick={onClose}>返回</button>
+        </div>
+        <div className="modal-body checkin-modal-body">
+          <h2 className="modal-title">创建打卡</h2>
+          <div className="form-item form-item-full">
+            <label>打卡名称</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="例如：早饭"
+            />
+          </div>
+        </div>
+        <div className="modal-footer checkin-modal-footer">
+          <button className="btn-primary" onClick={handleConfirm}>确认</button>
+        </div>
+      </div>
+    </div>
   );
 }
 

@@ -935,6 +935,7 @@ button:hover {
 .create-project-section {
     display: flex;
     justify-content: center;
+    gap: var(--spacing-md);
     margin-top: var(--spacing-xl);
     padding: var(--spacing-lg) 0;
 }
@@ -945,6 +946,87 @@ button:hover {
     font-weight: 600;
     background: transparent;
     color: var(--text-color);
+}
+
+/* ========== 打卡模块 ========== */
+.checkin-section {
+    margin-top: var(--spacing-lg);
+    padding: var(--spacing-lg);
+    border: var(--border-width-module) solid var(--border-module);
+    border-radius: var(--radius-large);
+    background: var(--bg-module);
+}
+
+.checkin-title {
+    margin: 0 0 var(--spacing-md);
+    color: var(--text-on-module);
+    font-size: var(--font-size-large);
+}
+
+.checkin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.checkin-card {
+    aspect-ratio: 1 / 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: var(--spacing-md);
+    border: var(--border-width-module) solid var(--border-module);
+    border-radius: var(--radius-base);
+    background: var(--bg-page);
+    color: var(--text-primary);
+    cursor: pointer;
+    text-align: left;
+}
+
+.checkin-card:hover {
+    transform: translateY(-1px);
+}
+
+.checkin-card-tag {
+    font-size: 12px;
+    opacity: 0.75;
+}
+
+.checkin-card-name {
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    word-break: break-word;
+}
+
+.checkin-card-state {
+    font-size: 12px;
+    opacity: 0.85;
+}
+
+.checkin-card.done {
+    background: rgba(127, 127, 127, 0.25);
+    color: var(--text-secondary);
+    border-color: rgba(127, 127, 127, 0.6);
+    cursor: not-allowed;
+}
+
+.checkin-modal {
+    max-width: 520px;
+}
+
+.checkin-modal-header {
+    padding-bottom: 0;
+}
+
+.checkin-modal-body {
+    padding-top: var(--spacing-sm);
+}
+
+.checkin-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0 var(--spacing-xl) var(--spacing-xl);
 }
 
 /* ========== 次要按钮 - 透明底+黄色描边 ========== */
