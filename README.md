@@ -1,32 +1,50 @@
-# Artemis 项目管理系统 / Artemis Project Management System
+# Artemis
 
-Artemis 是一款极简高效的项目与任务管理系统，支持多用户协作、任务依赖、优先级矩阵、实时进度追踪等功能。前端采用原生 JavaScript 与 CSS 变量，后端基于 Supabase（PostgreSQL + Auth + RLS），实现了安全的数据隔离与实时同步。  
-本项目已通过 Cloudflare Pages 自动化部署上线，欢迎体验和提出建议！
+Artemis 是一个项目与任务管理应用，基于 React + TypeScript + Supabase 构建，支持认证、任务管理、主题系统、AI 辅助描述和每日打卡功能。
 
-Artemis is a minimalist and efficient project and task management system supporting multi-user collaboration, task dependencies, priority matrix, and real-time progress tracking. The frontend is built with vanilla JavaScript and CSS variables, while the backend leverages Supabase (PostgreSQL + Auth + RLS) to ensure secure data isolation and real-time synchronization.  
-The project is automatically deployed via Cloudflare Pages. Feedback and suggestions are welcome!
+## 项目状态
 
-**项目当前处于短暂归档状态，2月7日前不会有任何更新。所有新需求和问题将在归档期结束后统一处理。**  
-**The project is temporarily archived and will not receive updates before February 7th. All new requests and issues will be addressed after the archive period.**
+**阶段性归档（Maintenance Pause）**
 
-## 主要特性 / Key Features
+自本次归档发布起，项目进入阶段性维护暂停：
 
-- 多用户认证与行级权限隔离，保障数据安全
-- 任务依赖、优先级矩阵、赏金系统等多维度任务管理
-- 实时同步与自动化部署（CI/CD）
-- 响应式设计，兼容桌面与移动端
-- 完善的工程化流程与开源管理
+- 不再持续迭代新功能
+- 仅在必要时处理阻断性问题
+- Issue/PR 可能延迟响应
 
-- Multi-user authentication and row-level security for data protection
-- Multi-dimensional task management: dependencies, priority matrix, bounty system
-- Real-time synchronization and automated deployment (CI/CD)
-- Responsive design for both desktop and mobile
-- Robust engineering workflow and open-source management
+后续如果恢复活跃开发，会在仓库 Release 和 README 中同步说明。
 
-## 项目地址 / Project Links
+## 当前功能范围
 
-- 线上体验 / Live Demo: https://artemis-b7j.pages.dev/
-- GitHub 源码 / Source Code: https://github.com/macintoshwan/Artemis
+- 邮箱注册/登录（Supabase Auth）
+- 项目与任务管理
+- 任务优先级、依赖关系、时间字段
+- 多主题界面切换
+- AI 任务描述建议（Edge Function）
+- 每日打卡（Supabase 持久化）
 
-如需了解更多或参与贡献，请查阅项目文档或提交 Issue。  
-For more information or to contribute, please refer to the documentation or submit an issue.
+## 技术栈
+
+- Frontend: React, TypeScript, Vite
+- Backend: Supabase (PostgreSQL, Auth, RLS, Realtime, Edge Functions)
+- Deploy: Cloudflare Pages
+
+## 运行与部署
+
+- 本地开发：`npm run dev`
+- 构建：`npm run build`
+- 线上地址：https://artemis-b7j.pages.dev/
+
+## 数据库变更说明
+
+每日打卡功能依赖新增表与策略，请在 Supabase 执行：
+
+- `docs/add_checkin_tables.sql`
+
+## 仓库链接
+
+- GitHub: https://github.com/macintoshwan/Artemis
+
+## 许可证
+
+本项目按仓库现有 License 发布。
