@@ -28,10 +28,4 @@ This project is currently in a maintenance pause phase.
 - Live Demo: https://artemis-b7j.pages.dev/
 - GitHub: https://github.com/macintoshwan/Artemis
 
-## Notes
-
-To enable daily check-in persistence, run:
-
-- `docs/add_checkin_tables.sql`
-
 License: see repository LICENSE.
