@@ -1,43 +1,19 @@
-# Artemis Release: Archive Milestone (2026-03)
+# Artemis v2.0.0
 
-## Summary
+## Features
 
-This release marks a staged archive milestone for Artemis.
-The project is now in maintenance pause mode and will not actively accept feature expansion for now.
+- React + TypeScript + Vite architecture
+- Email authentication with Supabase Auth
+- Project and task management
+- Task priority, dependency, and schedule support
+- Multi-theme UI system
+- AI content autofill for task descriptions
+- Daily check-in feature with Supabase persistence
+- Feishu bot integration workflow (separate bot workspace)
+- Supabase Realtime synchronization
 
-## Included In This Release
+## Database
 
-- Stabilized project/task management flow
-- Theme system and responsive UI improvements
-- AI-assisted task description flow
-- Feishu bot integration groundwork (separate bot workspace)
-- Daily check-in feature persisted with Supabase
-
-## Database Notes
-
-To enable daily check-in persistence, run:
+Run this SQL to enable daily check-in persistence:
 
 - `docs/add_checkin_tables.sql`
-
-This script creates:
-
-- `checkin_templates`
-- `checkin_records`
-- indexes, trigger consistency check, and RLS policies
-
-## Maintenance Policy (Archive Phase)
-
-- No ongoing feature roadmap commitments
-- Critical break/fix only when needed
-- Slower response time for issues and pull requests
-
-## Upgrade / Deploy Checklist
-
-1. Pull latest `main`
-2. Run SQL migration: `docs/add_checkin_tables.sql`
-3. Ensure env vars for Supabase are configured
-4. Build and deploy
-
-## Suggested Tag
-
-- `v0.9.0-archive-2026-03`
