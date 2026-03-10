@@ -17,3 +17,4 @@ Legacy/app.js
 # TypeScript 增量编译缓存
 *.tsbuildinfo
 tsconfig.tsbuildinfo
+/ArtemisBot
