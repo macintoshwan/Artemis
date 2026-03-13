@@ -11,8 +11,7 @@
     font-family: 'ProjectFont';
     src: local('方正粗宋简体'),
          local('Fangzheng Cusong Jianti'),
-         url('./fonts/FZCuSong.woff2') format('woff2'),
-         url('./fonts/FZCuSong.ttf') format('truetype');
+         url('./fonts/FZCuSong.woff2') format('woff2');
     font-weight: normal;
     font-style: normal;
     font-display: swap;
