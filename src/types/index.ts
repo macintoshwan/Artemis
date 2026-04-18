@@ -11,10 +11,13 @@ export interface Project {
   plan_duration: number | null;
   actual_start_date: string | null;
   actual_end_date: string | null;
-  actual_duration: number | null;
+  actual_duration: number | null; 
   priority: string | null;
   category: string | null;
   bounty: number | null;
+  is_system: boolean;
+  is_frozen: boolean;
+  is_archived: boolean;
   created_at: string;
   user_id: string; // uuid
 }
@@ -67,6 +70,10 @@ export interface NormalizedState {
   tasksByProject: Record<number, number[]>;
   /** 所有 project id (有序，按 created_at DESC) */
   projectIds: number[];
+  /** todo id → Todo */
+  todos: Record<number, Todo>;
+  /** 所有 todo id (有序，按 created_at DESC) */
+  todoIds: number[];
   /** 数据是否已完成首次加载 */
   initialized: boolean;
   /** 加载中 */
@@ -119,3 +126,28 @@ export interface CheckinRecord {
   created_at: string;
   user_id: string;
 }
+
+// ============================================================
+// Todo List Types
+// ============================================================
+
+/** todos 表行类型（独立任务，不隶属于任何项目） */
+export interface Todo {
+  id: number;
+  name: string;
+  completed: boolean;
+  created_at: string;
+  user_id: string;
+}
+
+/** 待办事项列表项（包含 backlog / ready / in-progress 任务） */
+export interface TodoItem {
+  id: number;
+  name: string;
+  type: 'project-task';
+  projectId?: number;
+  projectName?: string;
+  status: TaskStatus;
+  completed: boolean;
+}
+
