@@ -9,6 +9,11 @@ import { useProjectActions } from '../hooks/useActions';
 import { useShallow } from 'zustand/react/shallow';
 import { formatTimeRemainingCN } from '../utils/formatTime';
 
+function isTempProject(project: { is_system?: boolean; category?: string | null; name?: string } | undefined): boolean {
+  if (!project) return false;
+  return project.is_system === true || project.category === 'system' || project.name === '临时';
+}
+
 // ============================================================
 // ProjectCard —— 单个项目卡片（memo 化）
 // ============================================================
@@ -22,10 +27,11 @@ const ProjectCard = memo(function ProjectCard({ projectId, onSelect }: ProjectCa
   // 只订阅该 project 的数据，其他 project 变化不会触发 re-render
   const project = useProjectsStore(selectProject(projectId));
   const tasks = useProjectsStore(useShallow(selectTasksByProject(projectId)));
-  const { removeProject } = useProjectActions();
+  const { removeProject, updateProject } = useProjectActions();
 
   // 计算 planEndDate：项目自身有值就用，否则从任务中取最晚的
   const planEndDate = useMemo(() => {
+    if (project?.is_frozen || project?.is_archived) return null;
     if (project?.plan_end_date) return project.plan_end_date;
     if (!tasks || tasks.length === 0) return null;
 
@@ -55,12 +61,53 @@ const ProjectCard = memo(function ProjectCard({ projectId, onSelect }: ProjectCa
     }
   };
 
+  const handleToggleFreeze = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!project) return;
+    const allDone = tasks.every((t) => t.completed);
+    if (!project.is_frozen && allDone) {
+      alert('项目已完成，无需冻结');
+      return;
+    }
+    try {
+      await updateProject(projectId, { is_frozen: !project.is_frozen });
+    } catch (err) {
+      console.error('切换冻结状态失败:', err);
+      alert('切换冻结状态失败，请重试');
+    }
+  };
+
+  const handleToggleArchive = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!project) return;
+    try {
+      const nextArchived = !project.is_archived;
+      await updateProject(projectId, {
+        is_archived: nextArchived,
+        ...(nextArchived ? { is_frozen: false } : {}),
+      });
+    } catch (err) {
+      console.error('切换归档状态失败:', err);
+      alert('切换归档状态失败，请重试');
+    }
+  };
+
   return (
     <div className="project-card" onClick={() => onSelect(projectId)}>
       <div className="project-header">
-        <span className="project-title">{project.name}</span>
+        <div className="project-header-main">
+          {project.is_archived && <span className="project-state-tag">已归档</span>}
+          {project.is_frozen && <span className="project-state-tag">已冻结</span>}
+          <span className="project-title">{project.name}</span>
+        </div>
         <TimeRemaining planEndDate={planEndDate} />
         <div className="project-actions" onClick={(e) => e.stopPropagation()}>
+          <button className="btn-secondary" onClick={handleToggleArchive}>
+            {project.is_archived ? '解档' : '归档'}
+          </button>
+          <button className="btn-secondary" onClick={handleToggleFreeze}>
+            {project.is_frozen ? '解冻' : '冻结'}
+          </button>
           <button className="btn-danger" onClick={handleDelete}>
             删除
           </button>
@@ -110,6 +157,9 @@ export const ProjectList = memo(function ProjectList({ onSelectProject }: Projec
   // 只订阅 projectIds 数组（shallow 比较避免引用变动）
   const projectIds = useProjectsStore(useShallow(selectProjectIds));
   const { initialized, loading, error } = useProjectsStore(useShallow(selectMeta));
+  const projects = useProjectsStore((state) => state.projects);
+
+  const visibleProjectIds = projectIds.filter((id) => !isTempProject(projects[id]));
 
   if (loading && !initialized) {
     return <div className="empty-message">加载中...</div>;
@@ -119,13 +169,13 @@ export const ProjectList = memo(function ProjectList({ onSelectProject }: Projec
     return <div className="empty-message">加载失败: {error}</div>;
   }
 
-  if (projectIds.length === 0) {
+  if (visibleProjectIds.length === 0) {
     return <div className="empty-message">暂无项目，请创建第一个项目</div>;
   }
 
   return (
     <div className="project-list">
-      {projectIds.map((id) => (
+      {visibleProjectIds.map((id) => (
         <ProjectCard key={id} projectId={id} onSelect={onSelectProject} />
       ))}
     </div>

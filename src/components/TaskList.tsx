@@ -20,18 +20,19 @@ import { formatTimeRemainingCN } from '../utils/formatTime';
 // ============================================================
 
 const STATUS_OPTIONS: { key: TaskStatus; label: string }[] = [
-  { key: 'backlog', label: 'backlog' },
+  { key: 'backlog', label: 'back' },
   { key: 'ready', label: 'ready' },
-  { key: 'in-progress', label: 'in progress' },
+  { key: 'in-progress', label: 'inprocess' },
   { key: 'done', label: 'done' },
 ];
 
 interface TaskStatusBarProps {
   currentStatus: TaskStatus;
   onChangeStatus: (status: TaskStatus) => void;
+  disabled?: boolean;
 }
 
-const TaskStatusBar = memo(function TaskStatusBar({ currentStatus, onChangeStatus }: TaskStatusBarProps) {
+const TaskStatusBar = memo(function TaskStatusBar({ currentStatus, onChangeStatus, disabled = false }: TaskStatusBarProps) {
   return (
     <div className="task-status-buttons">
       {STATUS_OPTIONS.map(({ key, label }) => (
@@ -44,6 +45,7 @@ const TaskStatusBar = memo(function TaskStatusBar({ currentStatus, onChangeStatu
             e.stopPropagation();
             onChangeStatus(key);
           }}
+          disabled={disabled}
         >
           {label}
         </button>
@@ -59,30 +61,33 @@ const TaskStatusBar = memo(function TaskStatusBar({ currentStatus, onChangeStatu
 interface TaskItemProps {
   taskId: number;
   onEdit?: (taskId: number) => void;
+  isProjectFrozen?: boolean;
 }
 
-const TaskItem = memo(function TaskItem({ taskId, onEdit }: TaskItemProps) {
+const TaskItem = memo(function TaskItem({ taskId, onEdit, isProjectFrozen = false }: TaskItemProps) {
   const task = useProjectsStore(selectTask(taskId));
   const { removeTask, setTaskStatus } = useTaskActions();
 
   const handleStatusChange = useCallback(
     async (status: TaskStatus) => {
+      if (isProjectFrozen) return;
       try {
         await setTaskStatus(taskId, status);
       } catch (err) {
         console.error('设置任务状态失败:', err);
       }
     },
-    [taskId, setTaskStatus],
+    [taskId, setTaskStatus, isProjectFrozen],
   );
 
   const handleDelete = useCallback(async () => {
+    if (isProjectFrozen) return;
     try {
       await removeTask(taskId);
     } catch (err) {
       console.error('删除任务失败:', err);
     }
-  }, [taskId, removeTask]);
+  }, [taskId, removeTask, isProjectFrozen]);
 
   if (!task) return null;
 
@@ -90,17 +95,20 @@ const TaskItem = memo(function TaskItem({ taskId, onEdit }: TaskItemProps) {
 
   return (
     <div className="task-item">
-      <TaskStatusBar currentStatus={status} onChangeStatus={handleStatusChange} />
+      <TaskStatusBar currentStatus={status} onChangeStatus={handleStatusChange} disabled={isProjectFrozen} />
       <span
         className={`task-name ${task.completed ? 'completed' : ''}`}
-        onClick={() => onEdit?.(taskId)}
+        onClick={() => {
+          if (isProjectFrozen) return;
+          onEdit?.(taskId);
+        }}
       >
         {task.name}
       </span>
       {task.plan_end_date && !task.actual_end_date && (
         <TimeRemainingTask planEndDate={task.plan_end_date} />
       )}
-      <button className="btn-danger" onClick={handleDelete}>
+      <button className="btn-danger" onClick={handleDelete} disabled={isProjectFrozen}>
         删除
       </button>
     </div>
@@ -137,9 +145,10 @@ function TimeRemainingTask({ planEndDate }: { planEndDate: string }) {
 interface TaskListProps {
   projectId: number;
   onEditTask?: (taskId: number) => void;
+  isProjectFrozen?: boolean;
 }
 
-export const TaskList = memo(function TaskList({ projectId, onEditTask }: TaskListProps) {
+export const TaskList = memo(function TaskList({ projectId, onEditTask, isProjectFrozen = false }: TaskListProps) {
   // 只订阅该 project 的 task id 列表
   const taskIds = useProjectsStore(useShallow(selectTaskIdsByProject(projectId)));
 
@@ -150,7 +159,7 @@ export const TaskList = memo(function TaskList({ projectId, onEditTask }: TaskLi
   return (
     <div className="task-list">
       {taskIds.map((id) => (
-        <TaskItem key={id} taskId={id} onEdit={onEditTask} />
+        <TaskItem key={id} taskId={id} onEdit={onEditTask} isProjectFrozen={isProjectFrozen} />
       ))}
     </div>
   );

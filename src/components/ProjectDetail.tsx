@@ -28,6 +28,8 @@ function fmtDuration(hours: number | null): string {
 
 export const ProjectDetail = memo(function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
   const project = useProjectsStore(selectProject(projectId));
+    const isProjectLocked = Boolean(project?.is_frozen || project?.is_archived);
+
   // useShallow 避免 .map().filter() 返回新数组引用导致无限循环
   const tasks = useProjectsStore(useShallow(selectTasksByProject(projectId)));
 
@@ -123,6 +125,11 @@ export const ProjectDetail = memo(function ProjectDetail({ projectId, onBack }: 
         返回
       </button>
       <h2 className="modal-title">{project.name}</h2>
+      {isProjectLocked && (
+        <div className="empty-message">
+          {project.is_archived ? '该项目已归档，当前为只读模式' : '该项目已冻结，当前为只读模式'}
+        </div>
+      )}
 
       <div className="project-detail-meta" style={{ marginBottom: 16 }}>
         <div className="detail-info-text">
@@ -150,13 +157,13 @@ export const ProjectDetail = memo(function ProjectDetail({ projectId, onBack }: 
       </div>
 
       {/* 力导向任务关系图 */}
-      <TaskGraph tasks={tasks} onEditTask={handleEditTask} />
+      <TaskGraph tasks={tasks} onEditTask={isProjectLocked ? undefined : handleEditTask} />
 
-      <TaskList projectId={projectId} onEditTask={handleEditTask} />
+      <TaskList projectId={projectId} onEditTask={isProjectLocked ? undefined : handleEditTask} isProjectFrozen={isProjectLocked} />
 
       <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
-        <button className="btn-edit" onClick={handleEditProject}>编辑项目</button>
-        <button className="btn-success" onClick={handleAddTask}>添加任务</button>
+        <button className="btn-edit" onClick={handleEditProject} disabled={isProjectLocked}>编辑项目</button>
+        <button className="btn-success" onClick={handleAddTask} disabled={isProjectLocked}>添加任务</button>
       </div>
 
       {/* 任务编辑/新建浮层 */}

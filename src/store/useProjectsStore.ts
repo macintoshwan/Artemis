@@ -35,7 +35,7 @@
 
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { NormalizedState, Project, Task, RealtimePayload, ProjectWithTasks } from '../types';
+import type { NormalizedState, Project, Task, RealtimePayload, ProjectWithTasks, Todo } from '../types';
 
 // ============================================================
 // Store 类型
@@ -59,6 +59,14 @@ interface ProjectsActions {
   optimisticDeleteProject: (id: number) => { project: Project; tasks: Task[] } | undefined;
   optimisticDeleteTask: (id: number) => Task | undefined;
 
+  // ---- Todo 操作 ----
+  hydrateTodos: (todos: Todo[]) => void;
+  optimisticInsertTodo: (todo: Todo) => void;
+  optimisticUpdateTodo: (id: number, patch: Partial<Todo>) => Todo | undefined;
+  optimisticDeleteTodo: (id: number) => Todo | undefined;
+  rollbackTodo: (todo: Todo) => void;
+  restoreDeletedTodo: (todo: Todo) => void;
+
   // ---- 回滚 ----
   rollbackProject: (project: Project) => void;
   rollbackTask: (task: Task) => void;
@@ -80,6 +88,8 @@ const INITIAL_STATE: NormalizedState = {
   tasks: {},
   tasksByProject: {},
   projectIds: [],
+  todos: {},
+  todoIds: [],
   initialized: false,
   loading: false,
   error: null,
@@ -323,6 +333,60 @@ export const useProjectsStore = create<ProjectsStore>()(
       });
     },
 
+    // ─────────────────── Todo 操作 ───────────────────
+
+    hydrateTodos(todos: Todo[]) {
+      const todoMap: Record<number, Todo> = {};
+      const todoIdList: number[] = [];
+      for (const t of todos) {
+        todoMap[t.id] = t;
+        todoIdList.push(t.id);
+      }
+      set({ todos: todoMap, todoIds: todoIdList });
+    },
+
+    optimisticInsertTodo(todo: Todo) {
+      const state = get();
+      set({
+        todos: { ...state.todos, [todo.id]: todo },
+        todoIds: [todo.id, ...state.todoIds],
+      });
+    },
+
+    optimisticUpdateTodo(id: number, patch: Partial<Todo>) {
+      const state = get();
+      const prev = state.todos[id];
+      if (!prev) return undefined;
+      set({ todos: { ...state.todos, [id]: { ...prev, ...patch } } });
+      return prev;
+    },
+
+    optimisticDeleteTodo(id: number) {
+      const state = get();
+      const todo = state.todos[id];
+      if (!todo) return undefined;
+
+      const { [id]: _, ...restTodos } = state.todos;
+      set({
+        todos: restTodos,
+        todoIds: state.todoIds.filter((tid) => tid !== id),
+      });
+      return todo;
+    },
+
+    rollbackTodo(todo: Todo) {
+      const state = get();
+      set({ todos: { ...state.todos, [todo.id]: todo } });
+    },
+
+    restoreDeletedTodo(todo: Todo) {
+      const state = get();
+      set({
+        todos: { ...state.todos, [todo.id]: todo },
+        todoIds: [todo.id, ...state.todoIds],
+      });
+    },
+
     // ─────────────────── 工具 ───────────────────
 
     reset() {
@@ -360,3 +424,52 @@ export const selectMeta = (state: ProjectsStore) => ({
   loading: state.loading,
   error: state.error,
 });
+
+/** 获取所有 todo */
+export const selectTodos = (state: ProjectsStore) =>
+  state.todoIds.map((id) => state.todos[id]).filter((t): t is Todo => t !== null && t !== undefined);
+
+/** 获取单个 todo */
+export const selectTodo = (id: number) => (state: ProjectsStore) => state.todos[id];
+
+/** 从 store 中获取所有需要显示的 TodoItem */
+export const selectTodoItems = (deriveTaskStatus: (task: any) => string) => (state: ProjectsStore) => {
+  const items: any[] = [];
+
+  // 添加项目中的 in-progress 任务
+  for (const projectId of state.projectIds) {
+    const project = state.projects[projectId];
+    if (!project) continue;
+    const taskIds = state.tasksByProject[projectId] ?? [];
+    for (const taskId of taskIds) {
+      const task = state.tasks[taskId];
+      if (!task) continue;
+      const status = deriveTaskStatus(task);
+      if (status === 'in-progress') {
+        items.push({
+          id: task.id,
+          name: task.name,
+          type: 'project-task',
+          projectId: project.id,
+          projectName: project.name,
+          completed: task.completed,
+        });
+      }
+    }
+  }
+
+  // 添加独立 todo
+  for (const id of state.todoIds) {
+    const todo = state.todos[id];
+    if (todo) {
+      items.push({
+        id: todo.id,
+        name: todo.name,
+        type: 'standalone',
+        completed: todo.completed,
+      });
+    }
+  }
+
+  return items;
+};

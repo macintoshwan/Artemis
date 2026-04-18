@@ -237,6 +237,9 @@ export const ProjectEditModal = memo(function ProjectEditModal({
       await createProject({
         id: Date.now(),
         user_id: user.id,
+        is_system: false,
+        is_frozen: false,
+        is_archived: false,
         name: form.name.trim(),
         plan_start_date: localToIso(form.plan_start_date),
         plan_end_date: localToIso(form.plan_end_date),

@@ -4,7 +4,7 @@
  * 职责：认证守卫 + useRealtimeSync 挂载 + 页面路由
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useRealtimeSync } from '../hooks/useRealtimeSync';
 import { useTheme, type ThemePreset } from '../hooks/useTheme';
@@ -14,11 +14,22 @@ import {
   fetchCheckinRecordsByDate,
   insertCheckinTemplate,
   upsertCheckinRecord,
+  ensureSystemTodoProject,
 } from '../lib/api';
 import { ProjectList } from './ProjectList';
 import { ProjectDetail } from './ProjectDetail';
 import { ProjectEditModal } from './ProjectEditModal';
-import type { CheckinTemplate } from '../types';
+import { TaskEditModal } from './TaskEditModal';
+import { TodoList } from './TodoList';
+import type { CheckinTemplate, TodoItem, Project, TaskStatus } from '../types';
+import { useProjectsStore } from '../store/useProjectsStore';
+import { deriveTaskStatus } from '../types';
+import { useTaskActions } from '../hooks/useActions';
+
+function isTempProject(project: Project | null | undefined): boolean {
+  if (!project) return false;
+  return project.is_system || project.category === 'system' || project.name === '临时';
+}
 
 export default function App() {
   const { user, loading: authLoading, signIn, signUp, signOut } = useAuth();
@@ -27,6 +38,63 @@ export default function App() {
 
   // 挂载 Realtime 同步（用户变更时自动 cleanup + 重建）
   useRealtimeSync(user?.id);
+
+  // 从 store 获取最基础的数据
+  const { optimisticInsertProject } = useProjectsStore();
+  const { setTaskStatus } = useTaskActions();
+  const projectIds = useProjectsStore((s) => s.projectIds);
+  const projects = useProjectsStore((s) => s.projects);
+  const tasks = useProjectsStore((s) => s.tasks);
+  const tasksByProject = useProjectsStore((s) => s.tasksByProject);
+
+  // 用 useMemo 计算待办项，只在依赖变化时重新计算
+  const todoItems: TodoItem[] = useMemo(() => {
+    const items: TodoItem[] = [];
+    const statusOrder: Record<TaskStatus, number> = {
+      'in-progress': 0,
+      ready: 1,
+      backlog: 2,
+      done: 3,
+    };
+    const projectOrder = new Map<number, number>(projectIds.map((id, index) => [id, index]));
+
+    // 1. 添加项目中的 backlog / ready / in-progress 任务
+    for (const projectId of projectIds) {
+      const project = projects[projectId];
+      if (!project) continue;
+      if (project.is_frozen || project.is_archived) continue;
+      const taskIdsArr = tasksByProject[projectId] ?? [];
+      for (const taskId of taskIdsArr) {
+        const task = tasks[taskId];
+        if (!task) continue;
+        const status = deriveTaskStatus(task);
+        if (status !== 'done') {
+          items.push({
+            id: task.id,
+            name: task.name,
+            type: 'project-task',
+            projectId: project.id,
+            projectName: project.name,
+            status,
+            completed: task.completed,
+          });
+        }
+      }
+    }
+
+    items.sort((a, b) => {
+      const byStatus = statusOrder[a.status] - statusOrder[b.status];
+      if (byStatus !== 0) return byStatus;
+
+      const aProjectOrder = a.projectId !== undefined ? (projectOrder.get(a.projectId) ?? Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER;
+      const bProjectOrder = b.projectId !== undefined ? (projectOrder.get(b.projectId) ?? Number.MAX_SAFE_INTEGER) : Number.MAX_SAFE_INTEGER;
+      if (aProjectOrder !== bProjectOrder) return aProjectOrder - bProjectOrder;
+
+      return a.id - b.id;
+    });
+
+    return items;
+  }, [projectIds, projects, tasks, tasksByProject]);
 
   // 当前查看的项目 ID
   const [activeProjectId, setActiveProjectId] = useState<number | null>(null);
@@ -42,11 +110,39 @@ export default function App() {
   // 新建项目浮层
   const [isNewProjectOpen, setIsNewProjectOpen] = useState(false);
   const [isCheckinModalOpen, setIsCheckinModalOpen] = useState(false);
+  const [isTodoProjectPickerOpen, setIsTodoProjectPickerOpen] = useState(false);
+  const [todoCreateTarget, setTodoCreateTarget] = useState<number | 'temp' | null>(null);
   const [checkins, setCheckins] = useState<CheckinTemplate[]>([]);
   const [checkinRecords, setCheckinRecords] = useState<Record<number, string>>({});
   const [checkinLoading, setCheckinLoading] = useState(false);
 
   const todayKey = getLocalDateKey();
+
+  useEffect(() => {
+    const userId = user?.id;
+    if (!userId) return;
+    const currentUserId = userId as string;
+
+    let cancelled = false;
+
+    async function ensureTempProjectOnLogin() {
+      try {
+        const tempProject = await ensureSystemTodoProject(currentUserId);
+        if (cancelled) return;
+        const state = useProjectsStore.getState();
+        if (!state.projects[tempProject.id]) {
+          optimisticInsertProject(tempProject);
+        }
+      } catch (error) {
+        console.error('初始化临时项目失败:', error);
+      }
+    }
+
+    void ensureTempProjectOnLogin();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, optimisticInsertProject]);
 
   useEffect(() => {
     const userId = user?.id;
@@ -87,6 +183,56 @@ export default function App() {
     };
   }, [user?.id, todayKey]);
 
+  // 按任务流程创建待办：先本地选择项目，再进入任务表单
+  const handleStartCreateTodoTask = useCallback(() => {
+    if (!user?.id) {
+      alert('请先登录');
+      return;
+    }
+    setIsTodoProjectPickerOpen(true);
+  }, [user?.id]);
+
+  const handleChooseTodoProject = useCallback((projectId: number) => {
+    setTodoCreateTarget(projectId);
+    setIsTodoProjectPickerOpen(false);
+  }, []);
+
+  const handleChooseTempTodoProject = useCallback(() => {
+    setTodoCreateTarget('temp');
+    setIsTodoProjectPickerOpen(false);
+  }, []);
+
+  const handleCloseTodoProjectPicker = useCallback(() => {
+    setIsTodoProjectPickerOpen(false);
+  }, []);
+
+  const handleCloseTodoTaskModal = useCallback(() => {
+    setTodoCreateTarget(null);
+  }, []);
+
+  const resolveTempTodoProjectId = useCallback(async (): Promise<number> => {
+    if (!user?.id) {
+      throw new Error('请先登录');
+    }
+
+    const todoProject = await ensureSystemTodoProject(user.id);
+    const state = useProjectsStore.getState();
+    if (!state.projects[todoProject.id]) {
+      optimisticInsertProject(todoProject);
+    }
+    return todoProject.id;
+  }, [user?.id, optimisticInsertProject]);
+
+  // 处理切换待办任务状态
+  const handleChangeTodoStatus = useCallback(async (taskId: number, status: TaskStatus) => {
+    try {
+      await setTaskStatus(taskId, status);
+    } catch (error) {
+      console.error('更新待办状态失败:', error);
+      alert('更新待办状态失败，请重试');
+    }
+  }, [setTaskStatus]);
+
   const handleOpenNewProject = useCallback(() => {
     setIsNewProjectOpen(true);
   }, []);
@@ -102,6 +248,11 @@ export default function App() {
   const handleCloseCheckin = useCallback(() => {
     setIsCheckinModalOpen(false);
   }, []);
+
+  const todoProjectCandidates = projectIds
+    .map((id) => projects[id])
+    .filter((project): project is Project => project !== undefined);
+  const visibleTodoProjects = todoProjectCandidates.filter((project) => !isTempProject(project) && !project.is_frozen && !project.is_archived);
 
   const handleCreateCheckin = useCallback(async (name: string) => {
     if (!user?.id) {
@@ -187,23 +338,30 @@ export default function App() {
         <ProjectDetail projectId={activeProjectId} onBack={handleBack} />
       ) : (
         <>
-          <ProjectList onSelectProject={handleSelectProject} />
-
-          {checkins.length > 0 && (
-            <CheckinSection
-              templates={checkins}
-              records={checkinRecords}
-              todayKey={todayKey}
-              onCheckin={handleCheckinCardClick}
-            />
-          )}
+          <CheckinSection
+            templates={checkins}
+            records={checkinRecords}
+            todayKey={todayKey}
+            onCheckin={handleCheckinCardClick}
+            onCreateCheckin={handleOpenCheckin}
+          />
 
           {checkinLoading && <div className="empty-message">正在加载打卡数据...</div>}
 
-          <div className="create-project-section">
-            <button className="btn-primary btn-create-project" onClick={handleOpenNewProject}>新建项目</button>
-            <button className="btn-primary btn-create-project" onClick={handleOpenCheckin}>创建打卡</button>
-          </div>
+          <TodoList
+            items={todoItems}
+            onCreateTodoTask={handleStartCreateTodoTask}
+            onChangeTodoStatus={handleChangeTodoStatus}
+          />
+
+          <section className="project-section">
+            <ProjectList onSelectProject={handleSelectProject} />
+            <div className="section-footer">
+              <button className="btn-primary btn-create-action" onClick={handleOpenNewProject}>
+                创建项目
+              </button>
+            </div>
+          </section>
 
           {/* 新建项目浮层 */}
           {isNewProjectOpen && (
@@ -217,6 +375,25 @@ export default function App() {
             <CheckinCreateModal
               onClose={handleCloseCheckin}
               onConfirm={handleCreateCheckin}
+            />
+          )}
+
+          {isTodoProjectPickerOpen && (
+            <TodoProjectPickerModal
+              projects={visibleTodoProjects}
+              onClose={handleCloseTodoProjectPicker}
+              onPick={handleChooseTodoProject}
+              onPickTemp={handleChooseTempTodoProject}
+            />
+          )}
+
+          {todoCreateTarget !== null && (
+            <TaskEditModal
+              taskId={null}
+              projectId={typeof todoCreateTarget === 'number' ? todoCreateTarget : -1}
+              onClose={handleCloseTodoTaskModal}
+              defaultInProgress
+              resolveProjectId={todoCreateTarget === 'temp' ? resolveTempTodoProjectId : undefined}
             />
           )}
         </>
@@ -237,30 +414,40 @@ interface CheckinSectionProps {
   records: Record<number, string>;
   todayKey: string;
   onCheckin: (id: number) => void;
+  onCreateCheckin: () => void;
 }
 
-function CheckinSection({ templates, records, todayKey, onCheckin }: CheckinSectionProps) {
+function CheckinSection({ templates, records, todayKey, onCheckin, onCreateCheckin }: CheckinSectionProps) {
 
   return (
     <section className="checkin-section">
       <h2 className="checkin-title">每日打卡</h2>
-      <div className="checkin-grid">
-        {templates.map((item) => {
-          const doneToday = records[item.id] === todayKey;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              className={`checkin-card ${doneToday ? 'done' : ''}`}
-              onClick={() => onCheckin(item.id)}
-              disabled={doneToday}
-            >
-              <span className="checkin-card-tag">打卡</span>
-              <span className="checkin-card-name">{item.name}</span>
-              <span className="checkin-card-state">{doneToday ? '今日已完成' : '点击打卡'}</span>
-            </button>
-          );
-        })}
+      {templates.length === 0 ? (
+        <div className="empty-message">暂无打卡项，请先创建一个打卡</div>
+      ) : (
+        <div className="checkin-grid">
+          {templates.map((item) => {
+            const doneToday = records[item.id] === todayKey;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className={`checkin-card ${doneToday ? 'done' : ''}`}
+                onClick={() => onCheckin(item.id)}
+                disabled={doneToday}
+              >
+                <span className="checkin-card-tag">打卡</span>
+                <span className="checkin-card-name">{item.name}</span>
+                <span className="checkin-card-state">{doneToday ? '今日已完成' : '点击打卡'}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <div className="section-footer">
+        <button className="btn-primary btn-create-action" onClick={onCreateCheckin}>
+          创建打卡
+        </button>
       </div>
     </section>
   );
@@ -272,6 +459,48 @@ function getLocalDateKey() {
   const m = String(now.getMonth() + 1).padStart(2, '0');
   const d = String(now.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+
+interface TodoProjectPickerModalProps {
+  projects: Project[];
+  onClose: () => void;
+  onPick: (projectId: number) => void;
+  onPickTemp: () => void;
+}
+
+function TodoProjectPickerModal({ projects, onClose, onPick, onPickTemp }: TodoProjectPickerModalProps) {
+  return (
+    <div className="modal-overlay" style={{ display: 'flex' }} onClick={onClose}>
+      <div className="modal-container checkin-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header checkin-modal-header">
+          <button className="btn-back" onClick={onClose}>返回</button>
+        </div>
+        <div className="modal-body checkin-modal-body">
+          <h2 className="modal-title">选择待办所属项目</h2>
+          <div className="form-item form-item-full">
+            <label>先选一个项目，再填写任务内容</label>
+            <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
+              <button className="btn-secondary" onClick={onPickTemp}>
+                临时
+              </button>
+              {projects.map((project) => (
+                <button
+                  key={project.id}
+                  className="btn-secondary"
+                  onClick={() => onPick(project.id)}
+                >
+                  {project.name}
+                </button>
+              ))}
+              {projects.length === 0 && (
+                <div className="empty-message">当前没有可选项目</div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 interface CheckinCreateModalProps {

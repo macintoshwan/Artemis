@@ -34,6 +34,10 @@ interface TaskEditModalProps {
   projectId: number;
   /** 关闭回调 */
   onClose: () => void;
+  /** 创建待办任务时默认进入进行中状态 */
+  defaultInProgress?: boolean;
+  /** 延迟解析所属项目（例如“临时”项目在确认创建时再初始化） */
+  resolveProjectId?: () => Promise<number>;
 }
 
 interface TaskFormData {
@@ -167,6 +171,8 @@ export const TaskEditModal = memo(function TaskEditModal({
   taskId,
   projectId,
   onClose,
+  defaultInProgress = false,
+  resolveProjectId,
 }: TaskEditModalProps) {
   const isNew = taskId === null;
   const task = useProjectsStore(selectTask(taskId ?? -1));
@@ -198,12 +204,13 @@ export const TaskEditModal = memo(function TaskEditModal({
         plan_end_date: isoToLocal(new Date(now.getTime() + 3_600_000).toISOString()),
         plan_duration: '1',
         category: project?.category ?? '工作',
+        actual_start_date: defaultInProgress ? isoToLocal(now.toISOString()) : '',
       });
     } else if (task) {
       setForm(taskToForm(task));
     }
     isInitRef.current = true;
-  }, [taskId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [taskId, defaultInProgress]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 从 store 同步外部变更（realtime），但不覆盖用户正在编辑的字段
   useEffect(() => {
@@ -343,9 +350,18 @@ export const TaskEditModal = memo(function TaskEditModal({
     if (!user) { alert('请先登录'); return; }
 
     try {
+      let finalProjectId = projectId;
+      if (resolveProjectId && finalProjectId <= 0) {
+        finalProjectId = await resolveProjectId();
+      }
+      if (finalProjectId <= 0) {
+        alert('请选择任务所属项目');
+        return;
+      }
+
       await createTask({
         id: Date.now(),
-        project_id: projectId,
+        project_id: finalProjectId,
         user_id: user.id,
         ...buildPayload(form),
       });
@@ -354,7 +370,7 @@ export const TaskEditModal = memo(function TaskEditModal({
       console.error('创建任务失败:', err);
       alert('创建任务失败，请重试');
     }
-  }, [form, projectId, user, createTask, onClose, buildPayload]);
+  }, [form, projectId, resolveProjectId, user, createTask, onClose, buildPayload]);
 
   const handleAiFillDescription = useCallback(async () => {
     const title = form.name.trim();

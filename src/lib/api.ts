@@ -6,7 +6,7 @@
 
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
-import type { Project, Task, ProjectWithTasks, RealtimePayload, CheckinTemplate, CheckinRecord } from '../types';
+import type { Project, Task, ProjectWithTasks, RealtimePayload, CheckinTemplate, CheckinRecord, Todo } from '../types';
 
 export interface AiTaskDescriptionSuggestion {
   description: string;
@@ -68,6 +68,110 @@ export async function fetchAllUserData(userId: string): Promise<ProjectWithTasks
 
   if (error) throw new Error(`fetchAllUserData: ${error.message}`);
   return (data ?? []) as ProjectWithTasks[];
+}
+
+export async function ensureSystemTodoProject(userId: string): Promise<Project> {
+  const { data: existing, error: fetchError } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_system', true)
+    .maybeSingle();
+
+  if (fetchError) {
+    const missingSystemColumn =
+      fetchError.message.includes('projects.is_system') ||
+      fetchError.message.includes('column') && fetchError.message.includes('is_system');
+
+    if (missingSystemColumn) {
+      const { data: legacyExisting, error: legacyFetchError } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('category', 'system')
+        .eq('name', '临时')
+        .maybeSingle();
+
+      if (legacyFetchError) {
+        throw new Error(`ensureSystemTodoProject legacy fetch: ${legacyFetchError.message}`);
+      }
+
+      if (legacyExisting) {
+        return { ...(legacyExisting as Project), is_system: true, is_frozen: false, is_archived: false };
+      }
+
+      const { data: legacyInserted, error: legacyInsertError } = await supabase
+        .from('projects')
+        .insert({
+          id: Date.now(),
+          user_id: userId,
+          name: '临时',
+          plan_start_date: null,
+          plan_end_date: null,
+          plan_duration: null,
+          actual_start_date: null,
+          actual_end_date: null,
+          actual_duration: null,
+          priority: null,
+          category: 'system',
+          bounty: null,
+        })
+        .select()
+        .single();
+
+      if (legacyInsertError) {
+        throw new Error(`ensureSystemTodoProject legacy insert: ${legacyInsertError.message}`);
+      }
+
+      return { ...(legacyInserted as Project), is_system: true, is_frozen: false, is_archived: false };
+    }
+
+    throw new Error(`ensureSystemTodoProject fetch: ${fetchError.message}`);
+  }
+
+  if (existing) {
+    if (existing.name !== '临时') {
+      const { data: renamed, error: renameError } = await supabase
+        .from('projects')
+        .update({ name: '临时' })
+        .eq('id', existing.id)
+        .select()
+        .single();
+
+      if (renameError) {
+        throw new Error(`ensureSystemTodoProject rename: ${renameError.message}`);
+      }
+
+      return renamed as Project;
+    }
+
+    return existing as Project;
+  }
+
+  const { data, error } = await supabase
+    .from('projects')
+    .insert({
+      id: Date.now(),
+      user_id: userId,
+      name: '临时',
+      plan_start_date: null,
+      plan_end_date: null,
+      plan_duration: null,
+      actual_start_date: null,
+      actual_end_date: null,
+      actual_duration: null,
+      priority: null,
+      category: 'system',
+      bounty: null,
+      is_system: true,
+      is_frozen: false,
+      is_archived: false,
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error(`ensureSystemTodoProject insert: ${error.message}`);
+  return data as Project;
 }
 
 // ============================================================
@@ -257,4 +361,45 @@ export function subscribeRealtime(callbacks: RealtimeCallbacks): () => void {
   subscribe();
 
   return cleanup;
+}
+
+// ============================================================
+// Todo CRUD
+// ============================================================
+
+export async function fetchTodos(userId: string): Promise<Todo[]> {
+  const { data, error } = await supabase
+    .from('todos')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw new Error(`fetchTodos: ${error.message}`);
+  return (data ?? []) as Todo[];
+}
+
+export async function insertTodo(todo: Omit<Todo, 'created_at' | 'id'>): Promise<Todo> {
+  const { data, error } = await supabase
+    .from('todos')
+    .insert(todo)
+    .select()
+    .single();
+  if (error) throw new Error(`insertTodo: ${error.message}`);
+  return data as Todo;
+}
+
+export async function updateTodo(id: number, patch: Partial<Todo>): Promise<Todo> {
+  const { data, error } = await supabase
+    .from('todos')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw new Error(`updateTodo: ${error.message}`);
+  return data as Todo;
+}
+
+export async function deleteTodo(id: number): Promise<void> {
+  const { error } = await supabase.from('todos').delete().eq('id', id);
+  if (error) throw new Error(`deleteTodo: ${error.message}`);
 }
