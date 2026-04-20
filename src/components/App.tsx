@@ -115,6 +115,7 @@ export default function App() {
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [isTodoProjectPickerOpen, setIsTodoProjectPickerOpen] = useState(false);
   const [todoCreateTarget, setTodoCreateTarget] = useState<number | 'temp' | null>(null);
+  const [activeTodoTaskId, setActiveTodoTaskId] = useState<number | null>(null);
   const [checkins, setCheckins] = useState<CheckinTemplate[]>([]);
   const [checkinRecords, setCheckinRecords] = useState<Record<number, string>>({});
   const [checkinLoading, setCheckinLoading] = useState(false);
@@ -211,6 +212,14 @@ export default function App() {
 
   const handleCloseTodoTaskModal = useCallback(() => {
     setTodoCreateTarget(null);
+  }, []);
+
+  const handleSelectTodoTask = useCallback((taskId: number) => {
+    setActiveTodoTaskId(taskId);
+  }, []);
+
+  const handleCloseTodoTaskDetail = useCallback(() => {
+    setActiveTodoTaskId(null);
   }, []);
 
   const resolveTempTodoProjectId = useCallback(async (): Promise<number> => {
@@ -452,17 +461,18 @@ export default function App() {
             onCreateCheckin={handleOpenCheckin}
           />
 
-          <ScheduleSection
-            events={scheduleEvents}
-            onCreateSchedule={handleOpenSchedule}
-          />
-
           {checkinLoading && <div className="empty-message">正在加载打卡数据...</div>}
 
           <TodoList
             items={todoItems}
             onCreateTodoTask={handleStartCreateTodoTask}
             onChangeTodoStatus={handleChangeTodoStatus}
+            onSelectTodoTask={handleSelectTodoTask}
+          />
+
+          <ScheduleSection
+            events={scheduleEvents}
+            onCreateSchedule={handleOpenSchedule}
           />
 
           <section className="project-section">
@@ -512,6 +522,13 @@ export default function App() {
               onClose={handleCloseTodoTaskModal}
               defaultInProgress
               resolveProjectId={todoCreateTarget === 'temp' ? resolveTempTodoProjectId : undefined}
+            />
+          )}
+
+          {activeTodoTaskId !== null && (
+            <TaskDetailModal
+              taskId={activeTodoTaskId}
+              onClose={handleCloseTodoTaskDetail}
             />
           )}
         </>
@@ -651,6 +668,26 @@ function ScheduleCreateModal({ onClose, onConfirm }: ScheduleCreateModalProps) {
         </div>
       </div>
     </div>
+  );
+}
+
+interface TaskDetailModalProps {
+  taskId: number;
+  onClose: () => void;
+}
+
+function TaskDetailModal({ taskId, onClose }: TaskDetailModalProps) {
+  const task = useProjectsStore((state) => state.tasks[taskId]);
+  const projectId = task?.project_id ?? -1;
+
+  if (!task) return null;
+
+  return (
+    <TaskEditModal
+      taskId={taskId}
+      projectId={projectId}
+      onClose={onClose}
+    />
   );
 }
 

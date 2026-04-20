@@ -2141,6 +2141,7 @@ input[readonly] {
     background: var(--bg-task);
     border: var(--border-width-task) solid var(--border-module);
     border-radius: var(--radius-base);
+    cursor: pointer;
 }
 
 .todo-checkbox {
@@ -2154,6 +2155,14 @@ input[readonly] {
     flex: 1;
     color: var(--text-on-module);
     font-size: var(--font-size-base);
+}
+
+.todo-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 
 .todo-text.completed {

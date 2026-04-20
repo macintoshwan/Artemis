@@ -12,12 +12,14 @@ interface TodoListProps {
   items: TodoItem[];
   onCreateTodoTask: () => void;
   onChangeTodoStatus: (taskId: number, status: TaskStatus) => Promise<void>;
+  onSelectTodoTask: (taskId: number) => void;
 }
 
 export function TodoList({
   items,
   onCreateTodoTask,
   onChangeTodoStatus,
+  onSelectTodoTask,
 }: TodoListProps) {
   const handleChangeStatus = useCallback(
     async (taskId: number, status: TaskStatus) => {
@@ -39,7 +41,19 @@ export function TodoList({
       ) : (
         <ul className="todo-list">
           {items.map((item) => (
-            <li key={item.id} className="todo-item">
+            <li
+              key={item.id}
+              className="todo-item"
+              onClick={() => onSelectTodoTask(item.id)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onSelectTodoTask(item.id);
+                }
+              }}
+            >
               <div className="task-status-buttons">
                 {STATUS_OPTIONS.map(({ key, label }) => (
                   <button
@@ -54,12 +68,14 @@ export function TodoList({
                   </button>
                 ))}
               </div>
-              <span className={`todo-text ${item.completed ? 'completed' : ''}`}>
-                {item.name}
-              </span>
-              {item.projectName && (
-                <span className="todo-project-tag">{item.projectName}</span>
-              )}
+              <div className="todo-content">
+                <span className={`todo-text ${item.completed ? 'completed' : ''}`}>
+                  {item.name}
+                </span>
+                {item.projectName && (
+                  <span className="todo-project-tag">{item.projectName}</span>
+                )}
+              </div>
             </li>
           ))}
         </ul>
