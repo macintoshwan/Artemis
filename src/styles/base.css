@@ -1123,15 +1123,20 @@ button:hover {
 }
 
 .schedule-timeline-container {
-    display: grid;
+    display: flex;
     gap: var(--spacing-md);
     margin-top: var(--spacing-md);
+    overflow-x: auto;
+    align-items: stretch;
+    padding-bottom: 4px;
 }
 
 .schedule-day-column {
     border: var(--border-width-module) solid var(--border-module);
     border-radius: var(--radius-base);
     overflow: hidden;
+    min-width: 220px;
+    flex: 1 0 220px;
 }
 
 .schedule-day-header {
@@ -1146,7 +1151,8 @@ button:hover {
 .schedule-timeline {
     display: flex;
     flex-direction: column;
-    overflow: visible;
+    overflow: hidden;
+    height: 720px;
 }
 
 .schedule-block {
