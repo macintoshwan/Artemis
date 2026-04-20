@@ -651,6 +651,21 @@ input[type="text"] {
     color: var(--text-primary);
 }
 
+input[type="time"] {
+    width: 100%;
+    padding: 12px var(--spacing-md);
+    border: var(--border-width-module) solid var(--border-module);
+    border-radius: var(--radius-base);
+    font-size: var(--font-size-base);
+    outline: none;
+    background: var(--bg-page);
+    color: var(--text-primary);
+}
+
+input[type="time"]:focus {
+    border-color: var(--color-cyan);
+}
+
 /* 隐藏 number 输入框的上下调整按钮 */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
@@ -1035,8 +1050,17 @@ button:hover {
     cursor: not-allowed;
 }
 
-.checkin-modal {
+.modal-container.checkin-modal {
     max-width: 520px;
+}
+
+.modal-container.schedule-modal {
+    max-width: 980px;
+}
+
+.schedule-modal .modal-title {
+    font-size: var(--font-size-xl);
+    margin-bottom: 16px;
 }
 
 .checkin-modal-header {
@@ -1067,6 +1091,8 @@ button:hover {
     flex-direction: column;
     margin-top: var(--spacing-md);
     border: var(--border-width-module) solid var(--border-module);
+    max-height: 520px;
+    overflow-y: auto;
 }
 
 .schedule-block {

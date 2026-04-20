@@ -610,7 +610,7 @@ function ScheduleCreateModal({ onClose, onConfirm }: ScheduleCreateModalProps) {
 
   return (
     <div className="modal-overlay" style={{ display: 'flex' }} onClick={onClose}>
-      <div className="modal-container checkin-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-container checkin-modal schedule-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header checkin-modal-header">
           <button className="btn-back" onClick={onClose}>返回</button>
         </div>
