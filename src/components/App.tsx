@@ -296,7 +296,7 @@ export default function App() {
         if (rawEnd <= rangeStart || rawStart >= rangeEnd) return null;
 
         // 计算该任务属于哪一天及在该天的位置
-        const taskDayKey = rawStart.toISOString().split('T')[0];
+        const taskDayKey = rawStart.toISOString().slice(0, 10);
         const dayStartForTask = new Date(`${taskDayKey}T00:00:00`);
         const dayEndForTask = new Date(`${taskDayKey}T23:59:59.999`);
 
@@ -656,7 +656,7 @@ interface ScheduleCreateModalProps {
 
 function ScheduleCreateModal({ onClose, onConfirm, defaultDate }: ScheduleCreateModalProps) {
   const [name, setName] = useState('');
-  const [scheduleDate, setScheduleDate] = useState(defaultDate ?? new Date().toISOString().split('T')[0]);
+  const [scheduleDate, setScheduleDate] = useState(defaultDate ?? new Date().toISOString().slice(0, 10));
   const [startTime, setStartTime] = useState('08:00');
   const [endTime, setEndTime] = useState('09:00');
 

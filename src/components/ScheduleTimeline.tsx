@@ -1,12 +1,5 @@
 import { memo, useMemo } from 'react';
 
-interface ScheduleEvent {
-  id: number;
-  name: string;
-  startMinute: number;
-  endMinute: number;
-}
-
 interface ScheduleTimelineProps {
   events: Array<{ id: number; name: string; startMinute: number; endMinute: number; dateKey: string; dayIndex: number }>;
   todayKey: string;
@@ -35,110 +28,6 @@ function minuteToLabel(minute: number): string {
   const hh = String(h).padStart(2, '0');
   const mm = String(m).padStart(2, '0');
   return `${hh}:${mm}`;
-}
-
-function buildSegments(events: ScheduleEvent[]): Segment[] {
-  const normalized = [...events]
-    .map((event) => ({
-      ...event,
-      startMinute: Math.max(0, Math.min(1440, event.startMinute)),
-      endMinute: Math.max(0, Math.min(1440, event.endMinute)),
-    }))
-    .filter((event) => event.endMinute > event.startMinute)
-    .sort((a, b) => a.startMinute - b.startMinute);
-
-  const segments: Segment[] = [];
-  let cursor = 0;
-
-  for (const event of normalized) {
-    if (event.startMinute > cursor) {
-      segments.push({
-        kind: 'free',
-        startMinute: cursor,
-        endMinute: event.startMinute,
-      });
-    }
-
-    segments.push({
-      kind: 'occupied',
-      startMinute: event.startMinute,
-      endMinute: event.endMinute,
-      id: event.id,
-      name: event.name,
-    });
-
-    cursor = Math.max(cursor, event.endMinute);
-  }
-
-  if (cursor < 1440) {
-    segments.push({
-      kind: 'free',
-      startMinute: cursor,
-      endMinute: 1440,
-    });
-  }
-
-  if (segments.length === 0) {
-    segments.push({
-      kind: 'free',
-      startMinute: 0,
-      endMinute: 1440,
-    });
-  }
-
-  return segments;
-}
-
-function buildSegmentsForDay(events: Array<{ startMinute: number; endMinute: number; id: number; name: string }>): Segment[] {
-  const normalized = [...events]
-    .map((event) => ({
-      ...event,
-      startMinute: Math.max(0, Math.min(1440, event.startMinute)),
-      endMinute: Math.max(0, Math.min(1440, event.endMinute)),
-    }))
-    .filter((event) => event.endMinute > event.startMinute)
-    .sort((a, b) => a.startMinute - b.startMinute);
-
-  const segments: Segment[] = [];
-  let cursor = 0;
-
-  for (const event of normalized) {
-    if (event.startMinute > cursor) {
-      segments.push({
-        kind: 'free',
-        startMinute: cursor,
-        endMinute: event.startMinute,
-      });
-    }
-
-    segments.push({
-      kind: 'occupied',
-      startMinute: event.startMinute,
-      endMinute: event.endMinute,
-      id: event.id,
-      name: event.name,
-    });
-
-    cursor = Math.max(cursor, event.endMinute);
-  }
-
-  if (cursor < 1440) {
-    segments.push({
-      kind: 'free',
-      startMinute: cursor,
-      endMinute: 1440,
-    });
-  }
-
-  if (segments.length === 0) {
-    segments.push({
-      kind: 'free',
-      startMinute: 0,
-      endMinute: 1440,
-    });
-  }
-
-  return segments;
 }
 
 function buildSegmentsForDay(events: Array<{ startMinute: number; endMinute: number; id: number; name: string }>): Segment[] {
