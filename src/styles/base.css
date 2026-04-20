@@ -2161,8 +2161,9 @@ input[readonly] {
     flex: 1;
     min-width: 0;
     display: flex;
-    flex-direction: column;
-    gap: 2px;
+    flex-direction: row;
+    gap: 8px;
+    align-items: center;
 }
 
 .todo-text.completed {
