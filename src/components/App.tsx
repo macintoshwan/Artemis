@@ -629,7 +629,7 @@ function ScheduleCreateModal({ onClose, onConfirm }: ScheduleCreateModalProps) {
     <div className="modal-overlay" style={{ display: 'flex' }} onClick={onClose}>
       <div className="modal-container checkin-modal schedule-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header checkin-modal-header">
-          <button className="btn-back" onClick={onClose}>返回</button>
+          <button className="btn-secondary" onClick={onClose}>返回</button>
         </div>
         <div className="modal-body checkin-modal-body">
           <h2 className="modal-title">添加占用时间</h2>
@@ -733,7 +733,7 @@ function TodoProjectPickerModal({ projects, onClose, onPick, onPickTemp }: TodoP
     <div className="modal-overlay" style={{ display: 'flex' }} onClick={onClose}>
       <div className="modal-container checkin-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header checkin-modal-header">
-          <button className="btn-back" onClick={onClose}>返回</button>
+          <button className="btn-secondary" onClick={onClose}>返回</button>
         </div>
         <div className="modal-body checkin-modal-body">
           <h2 className="modal-title">选择待办所属项目</h2>

@@ -1193,7 +1193,7 @@ button:hover {
     text-align: center;
     color: var(--text-primary);
     margin-bottom: 25px;
-    font-size: var(--font-size-xxl);
+    font-size: var(--font-size-xl);
     display: inline-block;
     width: 100%;
 }
