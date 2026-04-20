@@ -666,6 +666,21 @@ input[type="time"]:focus {
     border-color: var(--color-cyan);
 }
 
+input[type="date"] {
+    width: 100%;
+    padding: 12px var(--spacing-md);
+    border: var(--border-width-module) solid var(--border-module);
+    border-radius: var(--radius-base);
+    font-size: var(--font-size-base);
+    outline: none;
+    background: var(--bg-page);
+    color: var(--text-primary);
+}
+
+input[type="date"]:focus {
+    border-color: var(--color-cyan);
+}
+
 /* 隐藏 number 输入框的上下调整按钮 */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
@@ -1086,11 +1101,51 @@ button:hover {
     background: var(--bg-card);
 }
 
+.schedule-view-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+    background: transparent;
+    color: var(--text-color);
+    border: var(--border-width-module) solid var(--border-module);
+    border-radius: var(--radius-base);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.schedule-view-btn.active {
+    background: var(--color-cyan);
+    color: var(--color-on-primary);
+    border-color: var(--color-cyan);
+}
+
+.schedule-view-btn:hover {
+    opacity: 0.85;
+}
+
+.schedule-timeline-container {
+    display: grid;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-md);
+}
+
+.schedule-day-column {
+    border: var(--border-width-module) solid var(--border-module);
+    border-radius: var(--radius-base);
+    overflow: hidden;
+}
+
+.schedule-day-header {
+    padding: 8px 12px;
+    background: rgba(102, 255, 204, 0.1);
+    color: var(--text-primary);
+    font-size: 12px;
+    font-weight: 600;
+    border-bottom: var(--border-width-module) solid var(--border-module);
+}
+
 .schedule-timeline {
     display: flex;
     flex-direction: column;
-    margin-top: var(--spacing-md);
-    border: var(--border-width-module) solid var(--border-module);
     overflow: visible;
 }
 

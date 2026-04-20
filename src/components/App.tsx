@@ -116,6 +116,8 @@ export default function App() {
   const [isTodoProjectPickerOpen, setIsTodoProjectPickerOpen] = useState(false);
   const [todoCreateTarget, setTodoCreateTarget] = useState<number | 'temp' | null>(null);
   const [activeTodoTaskId, setActiveTodoTaskId] = useState<number | null>(null);
+  const [scheduleViewDays, setScheduleViewDays] = useState(1);
+  const [scheduleModalDate, setScheduleModalDate] = useState<string | null>(null);
   const [checkins, setCheckins] = useState<CheckinTemplate[]>([]);
   const [checkinRecords, setCheckinRecords] = useState<Record<number, string>>({});
   const [checkinLoading, setCheckinLoading] = useState(false);
@@ -261,17 +263,29 @@ export default function App() {
     setIsCheckinModalOpen(false);
   }, []);
 
-  const handleOpenSchedule = useCallback(() => {
+  const handleOpenSchedule = useCallback((dateKey?: string) => {
+    setScheduleModalDate(dateKey ?? todayKey);
     setIsScheduleModalOpen(true);
-  }, []);
+  }, [todayKey]);
 
   const handleCloseSchedule = useCallback(() => {
     setIsScheduleModalOpen(false);
   }, []);
 
   const scheduleEvents = useMemo(() => {
-    const dayStart = new Date(`${todayKey}T00:00:00`);
-    const dayEnd = new Date(`${todayKey}T23:59:59.999`);
+    // 根据 scheduleViewDays 计算日期范围
+    const dates: string[] = [];
+    for (let i = 0; i < scheduleViewDays; i++) {
+      const d = new Date(todayKey);
+      d.setDate(d.getDate() + i);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      dates.push(`${y}-${m}-${dd}`);
+    }
+
+    const rangeStart = new Date(`${dates[0]}T00:00:00`);
+    const rangeEnd = new Date(`${dates[dates.length - 1]}T23:59:59.999`);
 
     return Object.values(tasks)
       .filter((task): task is Task => Boolean(task && task.is_fixed_event && task.schedule_start_at && task.schedule_end_at))
@@ -279,12 +293,17 @@ export default function App() {
         const rawStart = new Date(task.schedule_start_at!);
         const rawEnd = new Date(task.schedule_end_at!);
         if (isNaN(rawStart.getTime()) || isNaN(rawEnd.getTime())) return null;
-        if (rawEnd <= dayStart || rawStart >= dayEnd) return null;
+        if (rawEnd <= rangeStart || rawStart >= rangeEnd) return null;
 
-        const clippedStart = rawStart < dayStart ? dayStart : rawStart;
-        const clippedEnd = rawEnd > dayEnd ? dayEnd : rawEnd;
-        const startMinute = Math.max(0, Math.floor((clippedStart.getTime() - dayStart.getTime()) / 60_000));
-        const endMinute = Math.min(1440, Math.ceil((clippedEnd.getTime() - dayStart.getTime()) / 60_000));
+        // 计算该任务属于哪一天及在该天的位置
+        const taskDayKey = rawStart.toISOString().split('T')[0];
+        const dayStartForTask = new Date(`${taskDayKey}T00:00:00`);
+        const dayEndForTask = new Date(`${taskDayKey}T23:59:59.999`);
+
+        const clippedStart = rawStart < dayStartForTask ? dayStartForTask : rawStart;
+        const clippedEnd = rawEnd > dayEndForTask ? dayEndForTask : rawEnd;
+        const startMinute = Math.max(0, Math.floor((clippedStart.getTime() - dayStartForTask.getTime()) / 60_000));
+        const endMinute = Math.min(1440, Math.ceil((clippedEnd.getTime() - dayStartForTask.getTime()) / 60_000));
         if (endMinute <= startMinute) return null;
 
         return {
@@ -292,13 +311,15 @@ export default function App() {
           name: task.name,
           startMinute,
           endMinute,
+          dateKey: taskDayKey,
+          dayIndex: dates.indexOf(taskDayKey),
         };
       })
-      .filter((event): event is { id: number; name: string; startMinute: number; endMinute: number } => event !== null)
-      .sort((a, b) => a.startMinute - b.startMinute);
-  }, [tasks, todayKey]);
+      .filter((event): event is { id: number; name: string; startMinute: number; endMinute: number; dateKey: string; dayIndex: number } => event !== null && event.dayIndex >= 0)
+      .sort((a, b) => a.dayIndex !== b.dayIndex ? a.dayIndex - b.dayIndex : a.startMinute - b.startMinute);
+  }, [tasks, todayKey, scheduleViewDays]);
 
-  const handleCreateScheduleTask = useCallback(async (input: { name: string; startTime: string; endTime: string }) => {
+  const handleCreateScheduleTask = useCallback(async (input: { name: string; startTime: string; endTime: string; scheduleDate: string }) => {
     if (!user?.id) {
       alert('请先登录');
       return;
@@ -321,14 +342,14 @@ export default function App() {
       return;
     }
 
-    const overlapped = scheduleEvents.some((event) => !(endMinute <= event.startMinute || startMinute >= event.endMinute));
+    const overlapped = scheduleEvents.some((event) => event.dateKey === input.scheduleDate && !(endMinute <= event.startMinute || startMinute >= event.endMinute));
     if (overlapped) {
       alert('该时段与已有日程重叠，请调整后重试');
       return;
     }
 
-    const startIso = combineDateAndTimeToIso(todayKey, input.startTime);
-    const endIso = combineDateAndTimeToIso(todayKey, input.endTime);
+    const startIso = combineDateAndTimeToIso(input.scheduleDate, input.startTime);
+    const endIso = combineDateAndTimeToIso(input.scheduleDate, input.endTime);
     if (!startIso || !endIso) {
       alert('时间格式无效');
       return;
@@ -473,6 +494,9 @@ export default function App() {
           <ScheduleSection
             events={scheduleEvents}
             onCreateSchedule={handleOpenSchedule}
+            viewDays={scheduleViewDays}
+            onViewDaysChange={setScheduleViewDays}
+            todayKey={todayKey}
           />
 
           <section className="project-section">
@@ -503,6 +527,7 @@ export default function App() {
             <ScheduleCreateModal
               onClose={handleCloseSchedule}
               onConfirm={handleCreateScheduleTask}
+              defaultDate={scheduleModalDate ?? undefined}
             />
           )}
 
@@ -589,17 +614,33 @@ function CheckinSection({ templates, records, todayKey, onCheckin, onCreateCheck
 }
 
 interface ScheduleSectionProps {
-  events: Array<{ id: number; name: string; startMinute: number; endMinute: number }>;
-  onCreateSchedule: () => void;
+  events: Array<{ id: number; name: string; startMinute: number; endMinute: number; dateKey: string; dayIndex: number }>;
+  onCreateSchedule: (dateKey?: string) => void;
+  viewDays: number;
+  onViewDaysChange: (days: number) => void;
+  todayKey: string;
 }
 
-function ScheduleSection({ events, onCreateSchedule }: ScheduleSectionProps) {
+function ScheduleSection({ events, onCreateSchedule, viewDays, onViewDaysChange, todayKey }: ScheduleSectionProps) {
   return (
     <section className="schedule-section">
-      <h2 className="checkin-title">今日日程</h2>
-      <ScheduleTimeline events={events} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h2 className="checkin-title">今日日程</h2>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {[1, 3, 5, 7].map((days) => (
+            <button
+              key={days}
+              className={`schedule-view-btn ${viewDays === days ? 'active' : ''}`}
+              onClick={() => onViewDaysChange(days)}
+            >
+              {days === 1 ? '今天' : `${days}天`}
+            </button>
+          ))}
+        </div>
+      </div>
+      <ScheduleTimeline events={events} todayKey={todayKey} viewDays={viewDays} />
       <div className="section-footer">
-        <button className="btn-primary btn-create-action" onClick={onCreateSchedule}>
+        <button className="btn-primary btn-create-action" onClick={() => onCreateSchedule()}>
           添加占用时间
         </button>
       </div>
@@ -609,11 +650,13 @@ function ScheduleSection({ events, onCreateSchedule }: ScheduleSectionProps) {
 
 interface ScheduleCreateModalProps {
   onClose: () => void;
-  onConfirm: (input: { name: string; startTime: string; endTime: string }) => void;
+  onConfirm: (input: { name: string; startTime: string; endTime: string; scheduleDate: string }) => void;
+  defaultDate?: string;
 }
 
-function ScheduleCreateModal({ onClose, onConfirm }: ScheduleCreateModalProps) {
+function ScheduleCreateModal({ onClose, onConfirm, defaultDate }: ScheduleCreateModalProps) {
   const [name, setName] = useState('');
+  const [scheduleDate, setScheduleDate] = useState(defaultDate ?? new Date().toISOString().split('T')[0]);
   const [startTime, setStartTime] = useState('08:00');
   const [endTime, setEndTime] = useState('09:00');
 
@@ -622,6 +665,7 @@ function ScheduleCreateModal({ onClose, onConfirm }: ScheduleCreateModalProps) {
       name,
       startTime,
       endTime,
+      scheduleDate,
     });
   };
 
@@ -640,6 +684,14 @@ function ScheduleCreateModal({ onClose, onConfirm }: ScheduleCreateModalProps) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="例如：高数课"
+            />
+          </div>
+          <div className="form-item form-item-full">
+            <label>日期</label>
+            <input
+              type="date"
+              value={scheduleDate}
+              onChange={(e) => setScheduleDate(e.target.value)}
             />
           </div>
           <div className="schedule-time-row">
