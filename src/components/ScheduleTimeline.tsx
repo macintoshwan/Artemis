@@ -17,7 +17,7 @@ type Segment =
 
 const MINUTE_HEIGHT = 0.4;
 const MIN_DISPLAY_MINUTES = 60;
-const MIN_BLOCK_HEIGHT = 64;
+const MIN_BLOCK_HEIGHT = 80;
 
 function getDisplayHeight(durationMinutes: number): number {
   if (durationMinutes < MIN_DISPLAY_MINUTES) {
