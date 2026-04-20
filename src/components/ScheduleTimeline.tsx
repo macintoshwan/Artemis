@@ -16,6 +16,15 @@ type Segment =
   | { kind: 'occupied'; startMinute: number; endMinute: number; id: number; name: string };
 
 const MINUTE_HEIGHT = 0.4;
+const MIN_DISPLAY_MINUTES = 60;
+const MIN_BLOCK_HEIGHT = 64;
+
+function getDisplayHeight(durationMinutes: number): number {
+  if (durationMinutes < MIN_DISPLAY_MINUTES) {
+    return MIN_BLOCK_HEIGHT;
+  }
+  return Math.max(32, durationMinutes * MINUTE_HEIGHT);
+}
 
 function minuteToLabel(minute: number): string {
   const clamped = Math.max(0, Math.min(1440, minute));
@@ -85,17 +94,16 @@ export const ScheduleTimeline = memo(function ScheduleTimeline({ events }: Sched
     <div className="schedule-timeline">
       {segments.map((segment, index) => {
         const duration = segment.endMinute - segment.startMinute;
-        const height = Math.max(32, duration * MINUTE_HEIGHT);
+        const height = getDisplayHeight(duration);
         const start = minuteToLabel(segment.startMinute);
         const end = minuteToLabel(segment.endMinute);
 
         if (segment.kind === 'occupied') {
-          const minHeight = Math.max(64, height);
           return (
             <div
               key={`${segment.id}-${segment.startMinute}-${segment.endMinute}`}
               className="schedule-block schedule-block-occupied"
-              style={{ minHeight: `${minHeight}px` }}
+              style={{ minHeight: `${height}px` }}
             >
               <div className="schedule-block-time">{start} - {end}</div>
               <div className="schedule-block-name">{segment.name}</div>
@@ -107,7 +115,7 @@ export const ScheduleTimeline = memo(function ScheduleTimeline({ events }: Sched
           <div
             key={`free-${index}-${segment.startMinute}-${segment.endMinute}`}
             className="schedule-block schedule-block-free"
-            style={{ height: `${height}px` }}
+            style={{ minHeight: `${height}px` }}
           >
             <div className="schedule-block-time">{start} - {end}</div>
             <div className="schedule-block-name">可用</div>
