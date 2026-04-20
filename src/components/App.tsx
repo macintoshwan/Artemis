@@ -21,7 +21,8 @@ import { ProjectDetail } from './ProjectDetail';
 import { ProjectEditModal } from './ProjectEditModal';
 import { TaskEditModal } from './TaskEditModal';
 import { TodoList } from './TodoList';
-import type { CheckinTemplate, TodoItem, Project, TaskStatus } from '../types';
+import { ScheduleTimeline } from './ScheduleTimeline';
+import type { CheckinTemplate, TodoItem, Project, TaskStatus, Task } from '../types';
 import { useProjectsStore } from '../store/useProjectsStore';
 import { deriveTaskStatus } from '../types';
 import { useTaskActions } from '../hooks/useActions';
@@ -41,7 +42,7 @@ export default function App() {
 
   // 从 store 获取最基础的数据
   const { optimisticInsertProject } = useProjectsStore();
-  const { setTaskStatus } = useTaskActions();
+  const { createTask, setTaskStatus } = useTaskActions();
   const projectIds = useProjectsStore((s) => s.projectIds);
   const projects = useProjectsStore((s) => s.projects);
   const tasks = useProjectsStore((s) => s.tasks);
@@ -67,6 +68,7 @@ export default function App() {
       for (const taskId of taskIdsArr) {
         const task = tasks[taskId];
         if (!task) continue;
+        if (task.is_fixed_event) continue;
         const status = deriveTaskStatus(task);
         if (status !== 'done') {
           items.push({
@@ -110,6 +112,7 @@ export default function App() {
   // 新建项目浮层
   const [isNewProjectOpen, setIsNewProjectOpen] = useState(false);
   const [isCheckinModalOpen, setIsCheckinModalOpen] = useState(false);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [isTodoProjectPickerOpen, setIsTodoProjectPickerOpen] = useState(false);
   const [todoCreateTarget, setTodoCreateTarget] = useState<number | 'temp' | null>(null);
   const [checkins, setCheckins] = useState<CheckinTemplate[]>([]);
@@ -249,6 +252,109 @@ export default function App() {
     setIsCheckinModalOpen(false);
   }, []);
 
+  const handleOpenSchedule = useCallback(() => {
+    setIsScheduleModalOpen(true);
+  }, []);
+
+  const handleCloseSchedule = useCallback(() => {
+    setIsScheduleModalOpen(false);
+  }, []);
+
+  const scheduleEvents = useMemo(() => {
+    const dayStart = new Date(`${todayKey}T00:00:00`);
+    const dayEnd = new Date(`${todayKey}T23:59:59.999`);
+
+    return Object.values(tasks)
+      .filter((task): task is Task => Boolean(task && task.is_fixed_event && task.schedule_start_at && task.schedule_end_at))
+      .map((task) => {
+        const rawStart = new Date(task.schedule_start_at!);
+        const rawEnd = new Date(task.schedule_end_at!);
+        if (isNaN(rawStart.getTime()) || isNaN(rawEnd.getTime())) return null;
+        if (rawEnd <= dayStart || rawStart >= dayEnd) return null;
+
+        const clippedStart = rawStart < dayStart ? dayStart : rawStart;
+        const clippedEnd = rawEnd > dayEnd ? dayEnd : rawEnd;
+        const startMinute = Math.max(0, Math.floor((clippedStart.getTime() - dayStart.getTime()) / 60_000));
+        const endMinute = Math.min(1440, Math.ceil((clippedEnd.getTime() - dayStart.getTime()) / 60_000));
+        if (endMinute <= startMinute) return null;
+
+        return {
+          id: task.id,
+          name: task.name,
+          startMinute,
+          endMinute,
+        };
+      })
+      .filter((event): event is { id: number; name: string; startMinute: number; endMinute: number } => event !== null)
+      .sort((a, b) => a.startMinute - b.startMinute);
+  }, [tasks, todayKey]);
+
+  const handleCreateScheduleTask = useCallback(async (input: { name: string; startTime: string; endTime: string }) => {
+    if (!user?.id) {
+      alert('请先登录');
+      return;
+    }
+
+    const name = input.name.trim();
+    if (!name) {
+      alert('请输入事项名称');
+      return;
+    }
+
+    const startMinute = parseTimeToMinute(input.startTime);
+    const endMinute = parseTimeToMinute(input.endTime);
+    if (startMinute === null || endMinute === null) {
+      alert('请输入正确的时间');
+      return;
+    }
+    if (endMinute <= startMinute) {
+      alert('结束时间必须晚于开始时间');
+      return;
+    }
+
+    const overlapped = scheduleEvents.some((event) => !(endMinute <= event.startMinute || startMinute >= event.endMinute));
+    if (overlapped) {
+      alert('该时段与已有日程重叠，请调整后重试');
+      return;
+    }
+
+    const startIso = combineDateAndTimeToIso(todayKey, input.startTime);
+    const endIso = combineDateAndTimeToIso(todayKey, input.endTime);
+    if (!startIso || !endIso) {
+      alert('时间格式无效');
+      return;
+    }
+
+    try {
+      const scheduleProjectId = await resolveTempTodoProjectId();
+      await createTask({
+        id: Date.now(),
+        project_id: scheduleProjectId,
+        name,
+        plan_start_date: null,
+        plan_end_date: null,
+        plan_duration: null,
+        actual_start_date: null,
+        actual_end_date: null,
+        actual_duration: null,
+        category: '日程',
+        bounty: null,
+        completed: false,
+        prerequisites: null,
+        priority: null,
+        user_id: user.id,
+        description: null,
+        is_fixed_event: true,
+        schedule_start_at: startIso,
+        schedule_end_at: endIso,
+      });
+      setIsScheduleModalOpen(false);
+    } catch (error) {
+      console.error('创建日程占用失败:', error);
+      alert('创建日程占用失败，请重试');
+    }
+  }, [user?.id, todayKey, scheduleEvents, resolveTempTodoProjectId, createTask]);
+
   const todoProjectCandidates = projectIds
     .map((id) => projects[id])
     .filter((project): project is Project => project !== undefined);
@@ -346,6 +452,11 @@ export default function App() {
             onCreateCheckin={handleOpenCheckin}
           />
 
+          <ScheduleSection
+            events={scheduleEvents}
+            onCreateSchedule={handleOpenSchedule}
+          />
+
           {checkinLoading && <div className="empty-message">正在加载打卡数据...</div>}
 
           <TodoList
@@ -375,6 +486,13 @@ export default function App() {
             <CheckinCreateModal
               onClose={handleCloseCheckin}
               onConfirm={handleCreateCheckin}
+            />
+          )}
+
+          {isScheduleModalOpen && (
+            <ScheduleCreateModal
+              onClose={handleCloseSchedule}
+              onConfirm={handleCreateScheduleTask}
             />
           )}
 
@@ -453,12 +571,117 @@ function CheckinSection({ templates, records, todayKey, onCheckin, onCreateCheck
   );
 }
 
+interface ScheduleSectionProps {
+  events: Array<{ id: number; name: string; startMinute: number; endMinute: number }>;
+  onCreateSchedule: () => void;
+}
+
+function ScheduleSection({ events, onCreateSchedule }: ScheduleSectionProps) {
+  return (
+    <section className="schedule-section">
+      <h2 className="checkin-title">今日日程</h2>
+      <ScheduleTimeline events={events} />
+      <div className="section-footer">
+        <button className="btn-primary btn-create-action" onClick={onCreateSchedule}>
+          添加占用时间
+        </button>
+      </div>
+    </section>
+  );
+}
+
+interface ScheduleCreateModalProps {
+  onClose: () => void;
+  onConfirm: (input: { name: string; startTime: string; endTime: string }) => void;
+}
+
+function ScheduleCreateModal({ onClose, onConfirm }: ScheduleCreateModalProps) {
+  const [name, setName] = useState('');
+  const [startTime, setStartTime] = useState('08:00');
+  const [endTime, setEndTime] = useState('09:00');
+
+  const handleConfirm = () => {
+    onConfirm({
+      name,
+      startTime,
+      endTime,
+    });
+  };
+
+  return (
+    <div className="modal-overlay" style={{ display: 'flex' }} onClick={onClose}>
+      <div className="modal-container checkin-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header checkin-modal-header">
+          <button className="btn-back" onClick={onClose}>返回</button>
+        </div>
+        <div className="modal-body checkin-modal-body">
+          <h2 className="modal-title">添加占用时间</h2>
+          <div className="form-item form-item-full">
+            <label>事项名称</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="例如：高数课"
+            />
+          </div>
+          <div className="schedule-time-row">
+            <div className="form-item">
+              <label>开始时间</label>
+              <input
+                type="time"
+                step={60}
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+              />
+            </div>
+            <div className="form-item">
+              <label>结束时间</label>
+              <input
+                type="time"
+                step={60}
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+        <div className="modal-footer checkin-modal-footer">
+          <button className="btn-primary" onClick={handleConfirm}>确认</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function getLocalDateKey() {
   const now = new Date();
   const y = now.getFullYear();
   const m = String(now.getMonth() + 1).padStart(2, '0');
   const d = String(now.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+
+function parseTimeToMinute(input: string): number | null {
+  const match = /^(\d{2}):(\d{2})$/.exec(input);
+  if (!match) return null;
+  const h = Number(match[1]);
+  const m = Number(match[2]);
+  if (!Number.isInteger(h) || !Number.isInteger(m)) return null;
+  if (h < 0 || h > 23 || m < 0 || m > 59) return null;
+  return h * 60 + m;
+}
+
+function combineDateAndTimeToIso(dateKey: string, time: string): string | null {
+  const minute = parseTimeToMinute(time);
+  if (minute === null) return null;
+  const hour = Math.floor(minute / 60);
+  const min = minute % 60;
+  const hh = String(hour).padStart(2, '0');
+  const mm = String(min).padStart(2, '0');
+  const local = new Date(`${dateKey}T${hh}:${mm}:00`);
+  if (isNaN(local.getTime())) return null;
+  return local.toISOString();
 }
 
 interface TodoProjectPickerModalProps {

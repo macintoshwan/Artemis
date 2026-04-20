@@ -1053,6 +1053,62 @@ button:hover {
     padding: 0 var(--spacing-xl) var(--spacing-xl);
 }
 
+/* ========== 日程模块 ========== */
+.schedule-section {
+    margin-bottom: var(--spacing-xl);
+    padding: var(--spacing-lg);
+    border: var(--border-width-module) solid var(--border-module);
+    border-radius: var(--radius-large);
+    background: var(--bg-card);
+}
+
+.schedule-timeline {
+    display: flex;
+    flex-direction: column;
+    margin-top: var(--spacing-md);
+    border: var(--border-width-module) solid var(--border-module);
+}
+
+.schedule-block {
+    padding: 6px 10px;
+    border-bottom: var(--border-width-task) solid var(--border-module);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    overflow: hidden;
+}
+
+.schedule-block:last-child {
+    border-bottom: none;
+}
+
+.schedule-block-free {
+    background: rgba(102, 255, 204, 0.2);
+}
+
+.schedule-block-occupied {
+    background: rgba(255, 68, 68, 0.2);
+}
+
+.schedule-block-time {
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+.schedule-block-name {
+    font-size: var(--font-size-base);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.schedule-time-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-md);
+}
+
 /* ========== 次要按钮 - 透明底+黄色描边 ========== */
 .btn-secondary {
     background: transparent;
