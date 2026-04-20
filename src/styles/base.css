@@ -1125,9 +1125,11 @@ button:hover {
 .schedule-block-name {
     font-size: var(--font-size-base);
     color: var(--text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.2;
+    word-break: break-word;
     font-weight: 600;
 }
 

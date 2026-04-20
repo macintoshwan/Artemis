@@ -90,14 +90,14 @@ export const ScheduleTimeline = memo(function ScheduleTimeline({ events }: Sched
         const end = minuteToLabel(segment.endMinute);
 
         if (segment.kind === 'occupied') {
-          const showTime = height > 50; // 高度超过 50px 才显示时间
+          const minHeight = Math.max(64, height);
           return (
             <div
               key={`${segment.id}-${segment.startMinute}-${segment.endMinute}`}
               className="schedule-block schedule-block-occupied"
-              style={{ height: `${height}px` }}
+              style={{ minHeight: `${minHeight}px` }}
             >
-              {showTime && <div className="schedule-block-time">{start} - {end}</div>}
+              <div className="schedule-block-time">{start} - {end}</div>
               <div className="schedule-block-name">{segment.name}</div>
             </div>
           );
