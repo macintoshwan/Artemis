@@ -651,6 +651,36 @@ input[type="text"] {
     color: var(--text-primary);
 }
 
+input[type="time"] {
+    width: 100%;
+    padding: 12px var(--spacing-md);
+    border: var(--border-width-module) solid var(--border-module);
+    border-radius: var(--radius-base);
+    font-size: var(--font-size-base);
+    outline: none;
+    background: var(--bg-page);
+    color: var(--text-primary);
+}
+
+input[type="time"]:focus {
+    border-color: var(--color-cyan);
+}
+
+input[type="date"] {
+    width: 100%;
+    padding: 12px var(--spacing-md);
+    border: var(--border-width-module) solid var(--border-module);
+    border-radius: var(--radius-base);
+    font-size: var(--font-size-base);
+    outline: none;
+    background: var(--bg-page);
+    color: var(--text-primary);
+}
+
+input[type="date"]:focus {
+    border-color: var(--color-cyan);
+}
+
 /* 隐藏 number 输入框的上下调整按钮 */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
@@ -1035,8 +1065,17 @@ button:hover {
     cursor: not-allowed;
 }
 
-.checkin-modal {
+.modal-container.checkin-modal {
     max-width: 520px;
+}
+
+.modal-container.schedule-modal {
+    max-width: 980px;
+}
+
+.schedule-modal .modal-title {
+    font-size: var(--font-size-xl);
+    margin-bottom: 16px;
 }
 
 .checkin-modal-header {
@@ -1051,6 +1090,114 @@ button:hover {
     display: flex;
     justify-content: flex-end;
     padding: 0 var(--spacing-xl) var(--spacing-xl);
+}
+
+/* ========== 日程模块 ========== */
+.schedule-section {
+    margin-bottom: var(--spacing-xl);
+    padding: var(--spacing-lg);
+    border: var(--border-width-module) solid var(--border-module);
+    border-radius: var(--radius-large);
+    background: var(--bg-card);
+}
+
+.schedule-view-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+    background: transparent;
+    color: var(--text-color);
+    border: var(--border-width-module) solid var(--border-module);
+    border-radius: var(--radius-base);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.schedule-view-btn.active {
+    background: var(--color-cyan);
+    color: var(--color-on-primary);
+    border-color: var(--color-cyan);
+}
+
+.schedule-view-btn:hover {
+    opacity: 0.85;
+}
+
+.schedule-timeline-container {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-md);
+    overflow-x: auto;
+    align-items: stretch;
+    padding-bottom: 4px;
+}
+
+.schedule-day-column {
+    border: var(--border-width-module) solid var(--border-module);
+    border-radius: var(--radius-base);
+    overflow: hidden;
+    min-width: 220px;
+    flex: 1 0 220px;
+}
+
+.schedule-day-header {
+    padding: 8px 12px;
+    background: rgba(102, 255, 204, 0.1);
+    color: var(--text-primary);
+    font-size: 12px;
+    font-weight: 600;
+    border-bottom: var(--border-width-module) solid var(--border-module);
+}
+
+.schedule-timeline {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    height: 720px;
+}
+
+.schedule-block {
+    padding: 8px 10px;
+    border-bottom: var(--border-width-task) solid var(--border-module);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    overflow: hidden;
+}
+
+.schedule-block:last-child {
+    border-bottom: none;
+}
+
+.schedule-block-free {
+    background: rgba(102, 255, 204, 0.2);
+}
+
+.schedule-block-occupied {
+    background: rgba(255, 68, 68, 0.2);
+}
+
+.schedule-block-time {
+    font-size: 11px;
+    line-height: 1;
+    opacity: 0.9;
+}
+
+.schedule-block-name {
+    font-size: 18px;
+    color: var(--text-primary);
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.05;
+    word-break: break-word;
+    font-weight: 600;
+}
+
+.schedule-time-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-md);
 }
 
 /* ========== 次要按钮 - 透明底+黄色描边 ========== */
@@ -1111,7 +1258,7 @@ button:hover {
     text-align: center;
     color: var(--text-primary);
     margin-bottom: 25px;
-    font-size: var(--font-size-xxl);
+    font-size: var(--font-size-xl);
     display: inline-block;
     width: 100%;
 }
@@ -2059,6 +2206,7 @@ input[readonly] {
     background: var(--bg-task);
     border: var(--border-width-task) solid var(--border-module);
     border-radius: var(--radius-base);
+    cursor: pointer;
 }
 
 .todo-checkbox {
@@ -2072,6 +2220,15 @@ input[readonly] {
     flex: 1;
     color: var(--text-on-module);
     font-size: var(--font-size-base);
+}
+
+.todo-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    align-items: center;
 }
 
 .todo-text.completed {

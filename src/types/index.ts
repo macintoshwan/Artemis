@@ -41,6 +41,9 @@ export interface Task {
   priority: TaskPriority | null; // jsonb → structured
   user_id: string;
   description: string | null;
+  is_fixed_event?: boolean;
+  schedule_start_at?: string | null;
+  schedule_end_at?: string | null;
 }
 
 /** priority 字段 JSONB 结构 */

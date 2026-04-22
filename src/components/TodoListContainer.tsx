@@ -8,11 +8,13 @@ import type { TaskStatus } from '../types';
 interface TodoListContainerProps {
   onCreateTodoTask: () => void;
   onChangeTodoStatus: (taskId: number, status: TaskStatus) => Promise<void>;
+  onSelectTodoTask: (taskId: number) => void;
 }
 
 export function TodoListContainer({
   onCreateTodoTask,
   onChangeTodoStatus,
+  onSelectTodoTask,
 }: TodoListContainerProps) {
   const projectIds = useProjectsStore(selectProjectIds);
   const projects = useProjectsStore((state) => state.projects);
@@ -52,6 +54,7 @@ export function TodoListContainer({
       items={todoItems}
       onCreateTodoTask={onCreateTodoTask}
       onChangeTodoStatus={onChangeTodoStatus}
+      onSelectTodoTask={onSelectTodoTask}
     />
   );
 }
