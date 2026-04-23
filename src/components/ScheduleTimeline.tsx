@@ -4,6 +4,7 @@ interface ScheduleTimelineProps {
   events: Array<{ id: number; name: string; startMinute: number; endMinute: number; dateKey: string; dayIndex: number }>;
   todayKey: string;
   viewDays: number;
+  onSelectEvent: (taskId: number) => void;
 }
 
 type Segment =
@@ -71,7 +72,7 @@ function buildSegmentsForDay(events: Array<{ startMinute: number; endMinute: num
   return segments;
 }
 
-export const ScheduleTimeline = memo(function ScheduleTimeline({ events, todayKey, viewDays }: ScheduleTimelineProps) {
+export const ScheduleTimeline = memo(function ScheduleTimeline({ events, todayKey, viewDays, onSelectEvent }: ScheduleTimelineProps) {
   // 生成日期列表
   const dates = useMemo(() => {
     const result: string[] = [];
@@ -122,6 +123,15 @@ export const ScheduleTimeline = memo(function ScheduleTimeline({ events, todayKe
                     key={`${segment.id}-${segment.startMinute}-${segment.endMinute}`}
                     className="schedule-block schedule-block-occupied"
                     style={{ flex: `${flexGrow} 0 0` }}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => onSelectEvent(segment.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onSelectEvent(segment.id);
+                      }
+                    }}
                   >
                     <div className="schedule-block-time">{start} - {end}</div>
                     <div className="schedule-block-name">{segment.name}</div>

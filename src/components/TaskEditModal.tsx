@@ -178,7 +178,7 @@ export const TaskEditModal = memo(function TaskEditModal({
   const task = useProjectsStore(selectTask(taskId ?? -1));
   const project = useProjectsStore(selectProject(projectId));
   const { user } = useAuth();
-  const { createTask, updateTask } = useTaskActions();
+  const { createTask, updateTask, removeTask } = useTaskActions();
 
   const [form, setForm] = useState<TaskFormData>(EMPTY_FORM);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -372,6 +372,19 @@ export const TaskEditModal = memo(function TaskEditModal({
     }
   }, [form, projectId, resolveProjectId, user, createTask, onClose, buildPayload]);
 
+  const handleDelete = useCallback(async () => {
+    if (isNew || taskId === null) return;
+    if (!confirm('确定要删除这个任务吗？')) return;
+
+    try {
+      await removeTask(taskId);
+      onClose();
+    } catch (err) {
+      console.error('删除任务失败:', err);
+      alert('删除任务失败，请重试');
+    }
+  }, [isNew, taskId, removeTask, onClose]);
+
   const handleAiFillDescription = useCallback(async () => {
     const title = form.name.trim();
     if (!title) {
@@ -550,10 +563,14 @@ export const TaskEditModal = memo(function TaskEditModal({
           </div>
         </div>
 
-        {/* 底部：新建模式显示确认按钮 */}
-        {isNew && (
+        {/* 底部：新建模式显示确认按钮，编辑模式显示删除按钮 */}
+        {isNew ? (
           <div className="modal-footer">
             <button className="btn-primary" onClick={handleCreate}>确认创建</button>
+          </div>
+        ) : (
+          <div className="modal-footer">
+            <button className="btn-danger" onClick={handleDelete}>删除任务</button>
           </div>
         )}
       </div>

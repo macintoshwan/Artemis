@@ -1175,6 +1175,15 @@ button:hover {
 
 .schedule-block-occupied {
     background: rgba(255, 68, 68, 0.2);
+    cursor: pointer;
+    transition: background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.schedule-block-occupied:hover,
+.schedule-block-occupied:focus-visible {
+    background: rgba(255, 68, 68, 0.28);
+    transform: translateY(-1px);
+    outline: none;
 }
 
 .schedule-block-time {

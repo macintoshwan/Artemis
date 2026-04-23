@@ -220,6 +220,10 @@ export default function App() {
     setActiveTodoTaskId(taskId);
   }, []);
 
+  const handleSelectScheduleTask = useCallback((taskId: number) => {
+    setActiveTodoTaskId(taskId);
+  }, []);
+
   const handleCloseTodoTaskDetail = useCallback(() => {
     setActiveTodoTaskId(null);
   }, []);
@@ -497,6 +501,7 @@ export default function App() {
             viewDays={scheduleViewDays}
             onViewDaysChange={setScheduleViewDays}
             todayKey={todayKey}
+            onSelectEvent={handleSelectScheduleTask}
           />
 
           <section className="project-section">
@@ -619,9 +624,10 @@ interface ScheduleSectionProps {
   viewDays: number;
   onViewDaysChange: (days: number) => void;
   todayKey: string;
+  onSelectEvent: (taskId: number) => void;
 }
 
-function ScheduleSection({ events, onCreateSchedule, viewDays, onViewDaysChange, todayKey }: ScheduleSectionProps) {
+function ScheduleSection({ events, onCreateSchedule, viewDays, onViewDaysChange, todayKey, onSelectEvent }: ScheduleSectionProps) {
   return (
     <section className="schedule-section">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -638,7 +644,7 @@ function ScheduleSection({ events, onCreateSchedule, viewDays, onViewDaysChange,
           ))}
         </div>
       </div>
-      <ScheduleTimeline events={events} todayKey={todayKey} viewDays={viewDays} />
+      <ScheduleTimeline events={events} todayKey={todayKey} viewDays={viewDays} onSelectEvent={onSelectEvent} />
       <div className="section-footer">
         <button className="btn-primary btn-create-action" onClick={() => onCreateSchedule()}>
           添加占用时间
