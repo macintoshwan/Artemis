@@ -81,7 +81,7 @@ export async function ensureSystemTodoProject(userId: string): Promise<Project> 
   if (fetchError) {
     const missingSystemColumn =
       fetchError.message.includes('projects.is_system') ||
-      fetchError.message.includes('column') && fetchError.message.includes('is_system');
+      (fetchError.message.includes('column') && fetchError.message.includes('is_system'));
 
     if (missingSystemColumn) {
       const { data: legacyExisting, error: legacyFetchError } = await supabase

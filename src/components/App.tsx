@@ -296,7 +296,7 @@ export default function App() {
         if (rawEnd <= rangeStart || rawStart >= rangeEnd) return null;
 
         // 计算该任务属于哪一天及在该天的位置
-        const taskDayKey = rawStart.toISOString().slice(0, 10);
+        const taskDayKey = formatLocalDateKey(rawStart);
         const dayStartForTask = new Date(`${taskDayKey}T00:00:00`);
         const dayEndForTask = new Date(`${taskDayKey}T23:59:59.999`);
 
@@ -751,6 +751,13 @@ function getLocalDateKey() {
   return `${y}-${m}-${d}`;
 }
 
+function formatLocalDateKey(date: Date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 function parseTimeToMinute(input: string): number | null {
   const match = /^(\d{2}):(\d{2})$/.exec(input);
   if (!match) return null;
@@ -766,9 +773,13 @@ function combineDateAndTimeToIso(dateKey: string, time: string): string | null {
   if (minute === null) return null;
   const hour = Math.floor(minute / 60);
   const min = minute % 60;
-  const hh = String(hour).padStart(2, '0');
-  const mm = String(min).padStart(2, '0');
-  const local = new Date(`${dateKey}T${hh}:${mm}:00`);
+  const [yearText, monthText, dayText] = dateKey.split('-');
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null;
+
+  const local = new Date(year, month - 1, day, hour, min, 0, 0);
   if (isNaN(local.getTime())) return null;
   return local.toISOString();
 }
